@@ -1,1 +1,17 @@
-/* Dashboard CSS */).
+.pick-card { background: rgba(13,17,28,0.4); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 14px; cursor: pointer; backdrop-filter: blur(16px); position: relative; overflow: hidden; }
+.pick-card.golden { border: 1px solid transparent; }
+.pick-card.golden::before { content: ''; position: absolute; inset: -1px; z-index: -1; border-radius: 18px; background: linear-gradient(45deg, var(--purple), var(--cyan), var(--vip)); background-size: 300% 300%; animation: aurora 4s infinite; opacity: 0.6; }
+@keyframes aurora { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+.pick-header { display: flex; justify-content: space-between; margin-bottom: 14px; }
+.league-tag { font-size: 11px; color: var(--text-2); }
+.time-tag { font-size: 11px; font-weight: 700; font-family: monospace; padding: 4px 10px; background: var(--card); border-radius: 8px; }
+.pick-teams { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.team-row { display: flex; align-items: center; gap: 12px; }
+.team-badge { width: 32px; height: 32px; border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; object-fit: contain; padding: 2px; }
+.team-name { font-size: 15px; font-weight: 600; }
+.pick-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); }
+.ev-badge { font-size: 13px; font-weight: 800; color: var(--pos); font-family: monospace; }
+.stars { display: flex; gap: 2px; color: var(--vip); font-size: 14px; }
+.trap-indicator { padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; }
+.trap-clean { background: rgba(16,185,129,0.1); color: var(--pos); }
+.trap-caution { background: rgba(245,158,11,0.1); color: var(--vip); }
