@@ -1,51 +1,11 @@
-/* هيدر التفاصيل */
-.detail-header { padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(8,11,20,0.9); backdrop-filter: blur(20px); z-index: 20; }
-.detail-title { font-size: 15px; font-weight: 700; }
+.detail-header { padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 20; }
 .detail-body { padding: 20px; max-width: 800px; margin: 0 auto; }
-
-/* البطاقة العلوية */
-.hero-card { background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(6,182,212,0.1)); border: 1px solid var(--border-strong); border-radius: 20px; padding: 24px; text-align: center; margin-bottom: 20px; }
-.hero-teams { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.hero-card { background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(6,182,212,0.1)); border: 1px solid var(--border); border-radius: 20px; padding: 24px; text-align: center; margin-bottom: 20px; }
+.hero-teams { display: flex; justify-content: space-between; align-items: center; }
 .hero-team { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .hero-team-badge { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, var(--purple), var(--cyan)); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; color: #fff; }
-.hero-team-name { font-size: 14px; font-weight: 700; }
-.hero-vs { font-size: 12px; font-weight: 800; color: var(--text-2); font-family: monospace; }
-
-/* دائرة الاحتمالات (Donut) */
-.prob-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 18px; margin-bottom: 14px; display: flex; flex-direction: column; align-items: center; }
-.donut-chart { width: 140px; height: 140px; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; background: conic-gradient(var(--pos) 0% var(--home-p), var(--vip) var(--home-p) var(--draw-p), var(--neg) var(--draw-p) 100%); }
+.prob-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 14px; display: flex; flex-direction: column; align-items: center; }
+.donut-chart { width: 140px; height: 140px; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
 .donut-inner { width: 100px; height: 100px; background: var(--bg); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.donut-inner-title { font-size: 10px; color: var(--text-2); text-transform: uppercase; margin-bottom: 4px; }
-.donut-inner-val { font-size: 20px; font-weight: 900; }
-.prob-labels { display: flex; justify-content: space-between; width: 100%; padding: 0 10px; }
-.prob-label-item { text-align: center; flex: 1; }
-.prob-label-item .name { font-size: 11px; color: var(--text-2); margin-bottom: 4px; }
-.prob-label-item .val { font-size: 16px; font-weight: 800; font-family: monospace; }
-
-/* قسم التوصية */
 .bet-section { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.35); border-radius: 16px; padding: 18px; text-align: center; margin-bottom: 14px; }
-.bet-label { font-size: 10px; color: var(--pos); text-transform: uppercase; font-weight: 800; margin-bottom: 10px; }
-.bet-value { font-size: 20px; font-weight: 900; color: var(--pos); margin-bottom: 14px; }
-.bet-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.bet-stat { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px; }
-.bet-stat-lbl { font-size: 10px; color: var(--text-2); margin-bottom: 4px; }
-.bet-stat-val { font-size: 16px; font-weight: 800; font-family: monospace; }
-
-/* مخطط الرادار */
-.radar-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; display: flex; flex-direction: column; align-items: center; }
-.radar-container { width: 100%; max-width: 260px; height: 220px; position: relative; }
-.radar-legend { display: flex; justify-content: space-between; width: 100%; margin-top: 10px; font-size: 12px; font-weight: 700; }
-.radar-legend .home { color: var(--cyan); }
-.radar-legend .away { color: var(--vip); }
-
-/* العوامل */
-.factor-section { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
-.factor-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-.factor-row:last-child { border-bottom: none; padding-bottom: 0; }
-.factor-label { display: flex; align-items: center; gap: 10px; color: var(--text-2); }
-.factor-value { font-weight: 700; color: var(--text); font-family: monospace; font-size: 12px; }
-
-/* أزرار الإجراءات */
-.action-row { display: flex; gap: 10px; margin-top: 20px; }
-.action-btn { flex: 1; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.action-btn.active { background: rgba(245,158,11,0.1); border-color: var(--vip); color: var(--vip); }
+.bet-value { font-size: 20px; font-weight: 900; color: var(--pos); margin: 14px 0; }
