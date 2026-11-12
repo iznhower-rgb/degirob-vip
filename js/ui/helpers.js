@@ -33,6 +33,7 @@ const Helpers = {
     } catch (e) {}
   },
   animateValue(element, start, end, duration, suffix = '') {
+    if (!element) return;
     let startTimestamp = null;
     const step = (timestamp) => {
       if (!startTimestamp) startTimestamp = timestamp;
@@ -66,59 +67,29 @@ const Helpers = {
       });
     }, 1000);
   },
-  
-  // 📊 الدالة الجديدة: رسم الرادار التكتيكي (Radar Chart)
   renderRadar(homeStats, awayStats) {
     const cx = 130, cy = 110, maxR = 80;
     const numAxes = 5;
     const angleStep = (Math.PI * 2) / numAxes;
-    
-    // دالة لحساب الإحداثيات
     const getPoint = (value, index) => {
       const angle = index * angleStep - Math.PI / 2;
-      const r = (value / 100) * maxR;
+      const r = ((value || 0) / 100) * maxR;
       return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
     };
-
-    // رسم خطوط الشبكة الخلفية
     let grid = '';
     [20, 40, 60, 80, 100].forEach(level => {
       const points = Array.from({length: numAxes}, (_, i) => {
-        const p = getPoint(level, i);
-        return `${p.x},${p.y}`;
+        const p = getPoint(level, i); return `${p.x},${p.y}`;
       }).join(' ');
       grid += `<polygon points="${points}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
     });
-
-    // رسم المحاور
     let axes = '';
     for (let i = 0; i < numAxes; i++) {
       const p = getPoint(100, i);
       axes += `<line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
     }
-
-    // رسم بيانات الفريق المضيف (أزرق سماوي)
-    const homePoints = Object.values(homeStats).map((val, i) => {
-      const p = getPoint(val, i);
-      return `${p.x},${p.y}`;
-    }).join(' ');
-
-    // رسم بيانات الفريق الضيف (ذهبي)
-    const awayPoints = Object.values(awayStats).map((val, i) => {
-      const p = getPoint(val, i);
-      return `${p.x},${p.y}`;
-    }).join(' ');
-
-    return `
-      <svg viewBox="0 0 260 220" style="width:100%; height:100%; overflow:visible;">
-        ${grid}
-        ${axes}
-        <polygon points="${awayPoints}" fill="rgba(245,158,11,0.2)" stroke="var(--vip)" stroke-width="2"/>
-        <polygon points="${homePoints}" fill="rgba(6,182,212,0.2)" stroke="var(--cyan)" stroke-width="2"/>
-        <!-- النقاط على الرؤوس -->
-        ${Object.values(homeStats).map((val, i) => { const p = getPoint(val, i); return `<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--cyan)"/>`; }).join('')}
-        ${Object.values(awayStats).map((val, i) => { const p = getPoint(val, i); return `<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--vip)"/>`; }).join('')}
-      </svg>
-    `;
+    const homePoints = Object.values(homeStats).map((val, i) => { const p = getPoint(val, i); return `${p.x},${p.y}`; }).join(' ');
+    const awayPoints = Object.values(awayStats).map((val, i) => { const p = getPoint(val, i); return `${p.x},${p.y}`; }).join(' ');
+    return `<svg viewBox="0 0 260 220" style="width:100%; height:100%; overflow:visible;">${grid}${axes}<polygon points="${awayPoints}" fill="rgba(245,158,11,0.2)" stroke="var(--vip)" stroke-width="2"/><polygon points="${homePoints}" fill="rgba(6,182,212,0.2)" stroke="var(--cyan)" stroke-width="2"/></svg>`;
   }
 };
