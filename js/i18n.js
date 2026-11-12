@@ -1,25 +1,47 @@
-const I18n = {
-  t(key) {
-    const dict = STATE.lang === 'ar' ? TRANSLATIONS_AR : TRANSLATIONS_EN;
-    return dict[key] || key;
-  },
-  setLang(lang) {
-    STATE.lang = lang;
-    Storage.setLang(lang);
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-  },
-  toggle() {
-    this.setLang(STATE.lang === 'ar' ? 'en' : 'ar');
-  },
-  apply() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.getAttribute('data-i18n');
-      el.textContent = this.t(key);
-    });
-    const langBtn = document.getElementById('langBtn');
-    if (langBtn) {
-      langBtn.innerHTML = `<span>${STATE.lang === 'ar' ? 'EN' : 'AR'}</span>`;
-    }
-  }
+const TRANSLATIONS_AR = {
+  // Paywall
+  paywallSub: 'الاستخبارات التكتيكية للنخبة',
+  feat1: '8 توقعات ذهبية يومياً',
+  feat2: 'تحليل AI + السوق',
+  feat3: 'كشف التلاعب',
+  feat4: 'العربية + الإنجليزية',
+  unlockBtn: 'فتح الوصول',
+  invalidKey: 'مفتاح غير صالح',
+
+  // Dashboard
+  greeting: 'أهلاً بك، عضو النخبة',
+  greetingSub: 'ملخصك الاستخباراتي اليومي',
+  picks: 'توقعات',
+  accuracy: 'الدقة',
+  avgEV: 'متوسط EV',
+  goldenPicks: 'التوقعات الذهبية',
+  morePicks: 'فرص إضافية',
+  noMatches: 'لا توجد مباريات متاحة',
+
+  // Nav
+  home: 'الرئيسية',
+
+  // Detail
+  matchAnalysis: 'تحليل المباراة',
+  probability: 'الاحتمالات',
+  homeWin: 'المضيف',
+  draw: 'تعادل',
+  awayWin: 'الضيف',
+  vipRec: 'توصية VIP',
+  ev: 'القيمة المتوقعة',
+  kelly: 'مبلغ كيلي',
+  confidence: 'الثقة',
+  tactical: 'العوامل التكتيكية',
+  weather: 'الطقس',
+  referee: 'الحكم',
+  fatigue: 'الجاهزية',
+  coach: 'عقلية المدرب',
+  xg: 'الأهداف المتوقعة',
+  market: 'سلامة السوق',
+  clean: 'سوق نظيف',
+  caution: 'حذر',
+  trap: 'تحرك مشبوه',
+  fav: 'المفضلة',
+  fresh: 'جاهز',
+  tired: 'مرهق'
 };
