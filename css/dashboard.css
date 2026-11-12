@@ -1,120 +1,42 @@
-/* ========== PICK CARDS (GLASSMORPHISM) ========== */
-.pick-card {
-  background: rgba(13, 17, 28, 0.4);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px;
-  margin-bottom: 14px;
-  cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
-  position: relative;
-  /* السر هنا: تأثير الزجاج المصنفر */
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  overflow: hidden;
+/* بطاقات المباريات */
+.pick-card { 
+  background: rgba(13,17,28,0.4); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 14px; 
+  cursor: pointer; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); 
+  position: relative; overflow: hidden; transition: 0.2s;
 }
+.pick-card:active { transform: scale(0.98); }
 
-.pick-card:active { transform: scale(0.97); background: rgba(13, 17, 28, 0.7); }
+/* الإطار المتحرك (Aurora) للبطاقات الذهبية */
+.pick-card.golden { border: 1px solid transparent; }
+.pick-card.golden::before { 
+  content: ''; position: absolute; inset: -1px; z-index: -1; border-radius: 18px; 
+  background: linear-gradient(45deg, var(--purple), var(--cyan), var(--vip)); 
+  background-size: 300% 300%; animation: aurora 4s infinite; opacity: 0.6; 
+}
+@keyframes aurora { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-/* ========== AURORA BORDER (GOLDEN PICKS) ========== */
-.pick-card.golden {
-  background: rgba(20, 15, 5, 0.4); /* لمسة ذهبية شفافة */
-  border: 1px solid transparent;
-}
-
-.pick-card.golden::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  z-index: -1;
-  border-radius: 18px;
-  background: linear-gradient(45deg, var(--purple), var(--cyan), var(--vip), var(--vip), var(--purple));
-  background-size: 300% 300%;
-  animation: aurora 4s ease infinite;
-  opacity: 0.6;
-}
-
-@keyframes aurora {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.pick-card.golden:active {
-  background: rgba(30, 20, 5, 0.7);
-}
-
-.pick-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 14px;
-}
-.league-tag {
-  font-size: 11px; color: var(--text-2); font-weight: 600;
-  display: flex; align-items: center; gap: 8px;
-}
-.league-badge {
-  width: 20px; height: 20px;
-  background: var(--card-2); border-radius: 5px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 800; color: var(--text-2);
-}
-
-/* ========== COUNTDOWN TIMER ========== */
-.time-tag-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.time-tag {
-  font-size: 11px; font-weight: 700; color: var(--text);
-  font-family: ui-monospace, monospace;
-  padding: 4px 10px;
-  background: var(--card-2); border-radius: 8px;
-}
-.countdown-timer {
-  font-size: 10px; color: var(--vip); font-weight: 800;
-  font-family: ui-monospace, monospace;
-  animation: pulse 2s infinite;
-}
+.pick-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.league-tag { font-size: 11px; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+.league-badge { width: 20px; height: 20px; background: var(--card-2); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+.time-tag-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+.time-tag { font-size: 11px; font-weight: 700; font-family: monospace; padding: 4px 10px; background: var(--card-2); border-radius: 8px; }
+.countdown-timer { font-size: 10px; color: var(--vip); font-weight: 800; margin-top: 4px; }
 
 .pick-teams { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .team-row { display: flex; align-items: center; gap: 12px; }
-.team-badge {
-  width: 32px; height: 32px; border-radius: 10px;
-  background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.2));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 800; color: #fff;
-  flex-shrink: 0; border: 1px solid var(--border);
-}
-.team-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.team-badge { width: 32px; height: 32px; border-radius: 10px; background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.2)); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; object-fit: contain; padding: 2px; }
+.team-name { font-size: 15px; font-weight: 600; }
 
-.pick-footer {
-  display: flex; justify-content: space-between; align-items: center;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-}
-.ev-badge {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 13px; font-weight: 800; color: var(--pos);
-  font-family: ui-monospace, monospace;
-}
-.ev-badge svg { width: 14px; height: 14px; color: var(--pos); }
-
-/* ========== SPARKLINE ========== */
-.sparkline-wrap {
-  width: 60px; height: 20px; margin: 0 12px;
-  opacity: 0.8;
-}
-
+.pick-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); }
+.ev-badge { font-size: 13px; font-weight: 800; color: var(--pos); font-family: monospace; }
 .stars { display: flex; gap: 2px; }
-.star-f { color: var(--vip); width: 14px; height: 14px; }
-.star-e { color: var(--text-3); width: 14px; height: 14px; }
-
-.trap-indicator {
-  padding: 4px 10px; border-radius: 8px;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
-  display: flex; align-items: center; gap: 4px;
-}
+.star-f { color: var(--vip); font-size: 14px; }
+.star-e { color: var(--text-3); font-size: 14px; }
+.trap-indicator { padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; }
 .trap-clean { background: rgba(16,185,129,0.1); color: var(--pos); border: 1px solid rgba(16,185,129,0.3); }
-.trap-trap { background: rgba(244,63,94,0.1); color: var(--neg); border: 1px solid rgba(244,63,94,0.3); }
 .trap-caution { background: rgba(245,158,11,0.1); color: var(--vip); border: 1px solid rgba(245,158,11,0.3); }
 
-.empty-state { text-align: center; padding: 60px 20px; color: var(--text-2); }
-.empty-state-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-.empty-state-sub { font-size: 12px; }
+/* تأثير التحميل (Skeleton) */
+@keyframes shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
+.skeleton-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 14px; }
+.skeleton-line { height: 14px; margin-bottom: 10px; border-radius: 4px; background: #1a2035; background-image: linear-gradient(to right, #1a2035 0%, #2a3550 20%, #1a2035 40%, #1a2035 100%); background-repeat: no-repeat; background-size: 800px 100%; animation: shimmer 1.5s infinite linear forwards; }
