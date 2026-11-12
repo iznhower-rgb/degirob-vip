@@ -1,37 +1,63 @@
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(id);
-  if(el) el.classList.add('active');
-  window.scrollTo(0, 0);
-}
+const App = {
+  init() {
+    // 1. Load language
+    STATE.lang = Storage.getLang();
+    I18n.setLang(STATE.lang);
 
-function switchTab(tab) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.tab === tab));
-  showScreen(tab);
-  if (tab === 'history' && window.History) History.render();
-}
+    // 2. Load favorites
+    STATE.favorites = Storage.getFavorites();
 
-function requestNotif() {
-  if (!("Notification" in window)) return alert("Notifications not supported");
-  Notification.requestPermission().then(perm => {
-    if (perm === "granted") {
-      document.getElementById('notifToggle').classList.add('on');
-      new Notification("DeGirob VIP", { body: "Notifications Enabled!" });
+    // 3. Bind global events
+    this.bindEvents();
+
+    // 4. Check license
+    const license = Storage.getLicense();
+    if (license && CONFIG.VALID_KEYS.includes(license)) {
+      this.enterApp();
+    } else {
+      Navigation.showScreen('paywall');
+      Paywall.init();
     }
-  });
-}
+  },
 
-// التشغيل عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
-  // 1. تحميل البيانات
-  if (window.DEMO_MATCHES) window.STATE = { matches: DEMO_MATCHES, history: DEMO_HISTORY };
-  
-  // 2. التحقق من الترخيص
-  const key = localStorage.getItem('degirob_license');
-  if (key && ['DEGIROB-2026', 'VIP-ALPHA-001'].includes(key)) {
-    document.getElementById('paywall').style.display = 'none';
+  bindEvents() {
+    const langBtn = document.getElementById('langBtn');
+    if (langBtn) {
+      langBtn.addEventListener('click', () => this.toggleLang());
+    }
+
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        Navigation.showScreen('dashboard');
+      });
+    }
+  },
+
+  toggleLang() {
+    I18n.toggle();
+    I18n.apply();
+    if (STATE.matches.length) {
+      Dashboard.render();
+    }
+    if (STATE.currentMatchId) {
+      Detail.open(STATE.currentMatchId);
+    }
+  },
+
+  enterApp() {
+    document.getElementById('paywall').classList.add('hidden');
     document.getElementById('bottomNav').style.display = 'flex';
-    showScreen('dashboard');
-    if (window.Dashboard) Dashboard.render();
+    Navigation.showScreen('dashboard');
+    I18n.apply();
+    this.loadMatches();
+  },
+
+  async loadMatches() {
+    // Phase 1: use demo data (will be replaced by real API in phase 2)
+    STATE.matches = DEMO_MATCHES;
+    Dashboard.render();
   }
-});
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());
