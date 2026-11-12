@@ -3,32 +3,18 @@ const Dashboard = {
     const goldenEl = document.getElementById('goldenPicks');
     const moreEl = document.getElementById('morePicks');
 
-    // 💀 عرض Skeleton Loading أولاً
-    const skeletonHTML = `
-      <div class="skeleton-card">
-        <div class="skeleton-line title"></div>
-        <div class="skeleton-line team"></div>
-        <div class="skeleton-line team"></div>
-        <div class="skeleton-line footer"></div>
-      </div>
-    `.repeat(3);
-
+    const skeletonHTML = `<div class="skeleton-card"><div class="skeleton-line title"></div><div class="skeleton-line team"></div><div class="skeleton-line team"></div><div class="skeleton-line footer"></div></div>`.repeat(3);
     goldenEl.innerHTML = skeletonHTML;
     moreEl.innerHTML = skeletonHTML;
 
-    // ⏳ محاكاة التحميل (نصف ثانية) ثم عرض البيانات
     setTimeout(() => {
       const sorted = [...STATE.matches].sort((a, b) => b.analysis.ev - a.analysis.ev);
       const golden = sorted.filter(m => m.analysis.confidence !== 'low').slice(0, 3);
       const more = sorted.filter(m => !golden.includes(m)).slice(0, 5);
 
-      goldenEl.innerHTML = golden.length
-        ? golden.map(m => this.renderCard(m, true)).join('')
-        : `<div class="empty-state"><div class="empty-state-title">${I18n.t('noMatches')}</div></div>`;
-
+      goldenEl.innerHTML = golden.length ? golden.map(m => this.renderCard(m, true)).join('') : `<div class="empty-state"><div class="empty-state-title">${I18n.t('noMatches')}</div></div>`;
       moreEl.innerHTML = more.map(m => this.renderCard(m, false)).join('');
 
-      // الأرقام المتحركة
       const avgEV = STATE.matches.length ? (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length) : 0;
       Helpers.animateValue(document.getElementById('statPicks'), 0, STATE.matches.length, 1000);
       Helpers.animateValue(document.getElementById('statAccuracy'), 0, 68, 1200, '%');
@@ -44,10 +30,15 @@ const Dashboard = {
     const trendColor = a.market === 'clean' ? 'var(--pos)' : 'var(--vip)';
     const sparkline = Helpers.renderSparkline(m.marketTrend || [1,1,1,1,1], trendColor);
 
-    let homeBadge = m.homeLogo ? `<img src="${m.homeLogo}" class="team-badge" style="object-fit:contain; padding:4px; background:#fff" onerror="this.outerHTML='<div class=\\'team-badge\\'>${m.home.charAt(0)}</div>'">` : `<div class="team-badge">${m.home.charAt(0)}</div>`;
-    let awayBadge = m.awayLogo ? `<img src="${m.awayLogo}" class="team-badge" style="object-fit:contain; padding:4px; background:#fff" onerror="this.outerHTML='<div class=\\'team-badge\\'>${m.away.charAt(0)}</div>'">` : `<div class="team-badge">${m.away.charAt(0)}</div>`;
+    const homeBadge = m.homeLogo 
+      ? `<img src="${m.homeLogo}" class="team-badge" style="object-fit:contain; padding:4px; background:#fff" data-fallback="${m.home.charAt(0)}" onerror="this.outerHTML='<div class=&quot;team-badge&quot;>'+this.getAttribute('data-fallback')+'</div>'">` 
+      : `<div class="team-badge">${m.home.charAt(0)}</div>`;
+      
+    const awayBadge = m.awayLogo 
+      ? `<img src="${m.awayLogo}" class="team-badge" style="object-fit:contain; padding:4px; background:#fff" data-fallback="${m.away.charAt(0)}" onerror="this.outerHTML='<div class=&quot;team-badge&quot;>'+this.getAttribute('data-fallback')+'</div>'">` 
+      : `<div class="team-badge">${m.away.charAt(0)}</div>`;
 
-    let timeHtml = m.status === 'live' 
+    const timeHtml = m.status === 'live' 
       ? `<div class="time-tag" style="color:var(--neg); border:1px solid var(--neg)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--neg);margin-right:4px;animation:pulse 1s infinite"></span> LIVE</div>`
       : `<div class="time-tag">${m.time}</div><div class="countdown-timer" data-time="${m.startTime}"></div>`;
 
