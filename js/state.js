@@ -1,1 +1,6 @@
-const STATE = { matches: [], lang: 'ar', currentMatchId: null };
+const STATE = { 
+  matches: [], 
+  history: [], // تمت الإضافة
+  lang: 'ar', 
+  currentMatchId: null 
+};
