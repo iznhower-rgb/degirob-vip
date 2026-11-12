@@ -1,15 +1,19 @@
 const App = {
   init: () => {
     STATE.matches = DEMO_MATCHES;
+    STATE.history = DEMO_HISTORY; // ربط السجل
     STATE.lang = Storage.getLang();
     I18n.setLang(STATE.lang);
     
+    // ربط الأزرار
     document.getElementById('backBtn').addEventListener('click', () => Navigation.showScreen('dashboard'));
+    document.getElementById('legalBackBtn').addEventListener('click', () => Navigation.showScreen('profile'));
     document.getElementById('langBtn').addEventListener('click', () => {
       I18n.setLang(STATE.lang === 'ar' ? 'en' : 'ar');
       document.getElementById('langBtn').innerText = STATE.lang === 'ar' ? 'EN' : 'AR';
     });
 
+    // التحقق من الترخيص
     if (Storage.getLicense() && CONFIG.VALID_KEYS.includes(Storage.getLicense())) {
       App.enterApp();
     } else {
@@ -17,6 +21,7 @@ const App = {
       Paywall.init();
     }
   },
+  
   enterApp: () => {
     document.getElementById('paywall').classList.add('hidden');
     document.getElementById('bottomNav').style.display = 'flex';
@@ -24,4 +29,5 @@ const App = {
     Dashboard.render();
   }
 };
+
 document.addEventListener('DOMContentLoaded', App.init);
