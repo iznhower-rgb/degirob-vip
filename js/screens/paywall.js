@@ -1,12 +1,22 @@
-function unlockApp() {
-  const key = document.getElementById('keyInput').value.trim().toUpperCase();
-  if (['DEGIROB-2026', 'VIP-ALPHA-001'].includes(key)) {
-    localStorage.setItem('degirob_license', key);
-    document.getElementById('paywall').style.display = 'none';
-    document.getElementById('bottomNav').style.display = 'flex';
-    showScreen('dashboard');
-    if (window.Dashboard) Dashboard.render();
-  } else {
-    alert('❌ Invalid Key. Use: DEGIROB-2026');
+const Paywall = {
+  init() {
+    const form = document.getElementById('keyForm');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.unlock();
+    });
+  },
+
+  unlock() {
+    const input = document.getElementById('keyInput');
+    const key = input.value.trim().toUpperCase();
+    if (CONFIG.VALID_KEYS.includes(key)) {
+      Storage.setLicense(key);
+      App.enterApp();
+    } else {
+      input.classList.add('error');
+      setTimeout(() => input.classList.remove('error'), 600);
+      alert(I18n.t('invalidKey'));
+    }
   }
-}
+};
