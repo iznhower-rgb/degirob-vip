@@ -9,16 +9,14 @@ const Detail = {
     if (a.bestBet === 'draw') betName = I18n.t('draw');
     else if (a.bestBet === 'away') betName = m.away;
     const isFav = STATE.favorites.includes(id);
-
     const homeP = a.home;
     const drawP = a.home + a.draw;
 
-    let hLogo = m.homeLogo ? `<img src="${m.homeLogo}" class="hero-team-logo" onerror="this.outerHTML='<div class=\\'hero-team-badge\\'>${m.home.charAt(0)}</div>'">` : `<div class="hero-team-badge">${m.home.charAt(0)}</div>`;
-    let aLogo = m.awayLogo ? `<img src="${m.awayLogo}" class="hero-team-logo" onerror="this.outerHTML='<div class=\\'hero-team-badge\\'>${m.away.charAt(0)}</div>'">` : `<div class="hero-team-badge">${m.away.charAt(0)}</div>`;
+    const hLogo = m.homeLogo ? `<img src="${m.homeLogo}" class="hero-team-logo" data-fallback="${m.home.charAt(0)}" onerror="this.outerHTML='<div class=&quot;hero-team-badge&quot;>'+this.getAttribute('data-fallback')+'</div>'">` : `<div class="hero-team-badge">${m.home.charAt(0)}</div>`;
+    const aLogo = m.awayLogo ? `<img src="${m.awayLogo}" class="hero-team-logo" data-fallback="${m.away.charAt(0)}" onerror="this.outerHTML='<div class=&quot;hero-team-badge&quot;>'+this.getAttribute('data-fallback')+'</div>'">` : `<div class="hero-team-badge">${m.away.charAt(0)}</div>`;
 
-    // بيانات الرادار (يمكن ربطها بالبيانات الحقيقية لاحقاً)
-    const homeRadar = { attack: 85, defense: 70, form: 90, xg: a.xg.home * 40, market: 75 };
-    const awayRadar = { attack: 75, defense: 80, form: 60, xg: a.xg.away * 40, market: 65 };
+    const homeRadar = { attack: 85, defense: 70, form: 90, xg: a.xg ? (a.xg.home * 40) : 70, market: 75 };
+    const awayRadar = { attack: 75, defense: 80, form: 60, xg: a.xg ? (a.xg.away * 40) : 70, market: 65 };
 
     document.getElementById('detailContent').innerHTML = `
       <div class="hero-card">
@@ -56,7 +54,6 @@ const Detail = {
         </div>
       </div>
 
-      <!-- 📊 Tactical Radar Chart -->
       <div class="radar-section">
         <div class="section-label" style="align-self:flex-start;margin-bottom:10px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -85,7 +82,6 @@ const Detail = {
         </button>
       </div>
     `;
-
     Navigation.showScreen('detail');
   },
 
