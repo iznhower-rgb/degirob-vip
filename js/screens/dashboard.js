@@ -13,18 +13,28 @@ const Dashboard = {
 
     moreEl.innerHTML = more.map(m => this.renderCard(m, false)).join('');
 
-    // Update stats
+    // ✨ Animate Numbers (العدادات المتحركة)
     const avgEV = STATE.matches.length
-      ? (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1)
-      : '0';
-    document.getElementById('statPicks').textContent = STATE.matches.length;
-    document.getElementById('statEV').textContent = '+' + avgEV + '%';
+      ? (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length)
+      : 0;
+      
+    Helpers.animateValue(document.getElementById('statPicks'), 0, STATE.matches.length, 1000);
+    Helpers.animateValue(document.getElementById('statAccuracy'), 0, 68, 1200, '%');
+    Helpers.animateValue(document.getElementById('statEV'), 0, Math.round(avgEV), 1500, '%');
+    // تغيير علامة + يدوياً بعد الأنيميشن
+    setTimeout(() => {
+      document.getElementById('statEV').textContent = '+' + Math.round(avgEV) + '%';
+    }, 1600);
   },
 
   renderCard(m, isGolden) {
     const a = m.analysis;
     const marketClass = a.market === 'clean' ? 'trap-clean' : a.market === 'trap' ? 'trap-trap' : 'trap-caution';
     const marketText = a.market === 'clean' ? 'CLEAN' : a.market === 'trap' ? 'TRAP' : 'CAUTION';
+    
+    // 📈 إعداد المخطط الخطي (Sparkline)
+    const trendColor = a.market === 'clean' ? 'var(--pos)' : 'var(--vip)';
+    const sparkline = Helpers.renderSparkline(m.marketTrend || [1,1,1,1,1], trendColor);
 
     return `
       <div class="pick-card ${isGolden ? 'golden' : ''}" onclick="Detail.open('${m.id}')">
@@ -33,7 +43,11 @@ const Dashboard = {
             <span class="league-badge">${m.leagueBadge}</span>
             <span>${m.league}</span>
           </div>
-          <div class="time-tag">${m.time}</div>
+          <div class="time-tag-wrap">
+            <div class="time-tag">${m.time}</div>
+            <!-- ⏱️ المؤقت التنازلي -->
+            <div class="countdown-timer" data-time="${m.startTime}"></div>
+          </div>
         </div>
         <div class="pick-teams">
           <div class="team-row">
@@ -52,6 +66,7 @@ const Dashboard = {
             </svg>
             +${a.ev}% EV
           </div>
+          ${sparkline} <!-- المخطط الخطي المصغر -->
           <div class="stars">${Helpers.renderStars(a.stars)}</div>
           <div class="trap-indicator ${marketClass}">● ${marketText}</div>
         </div>
