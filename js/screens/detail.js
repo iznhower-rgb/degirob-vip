@@ -10,12 +10,15 @@ const Detail = {
     else if (a.bestBet === 'away') betName = m.away;
     const isFav = STATE.favorites.includes(id);
 
-    // تحديد قيم الـ Donut Chart
     const homeP = a.home;
     const drawP = a.home + a.draw;
 
     let hLogo = m.homeLogo ? `<img src="${m.homeLogo}" class="hero-team-logo" onerror="this.outerHTML='<div class=\\'hero-team-badge\\'>${m.home.charAt(0)}</div>'">` : `<div class="hero-team-badge">${m.home.charAt(0)}</div>`;
     let aLogo = m.awayLogo ? `<img src="${m.awayLogo}" class="hero-team-logo" onerror="this.outerHTML='<div class=\\'hero-team-badge\\'>${m.away.charAt(0)}</div>'">` : `<div class="hero-team-badge">${m.away.charAt(0)}</div>`;
+
+    // بيانات الرادار (يمكن ربطها بالبيانات الحقيقية لاحقاً)
+    const homeRadar = { attack: 85, defense: 70, form: 90, xg: a.xg.home * 40, market: 75 };
+    const awayRadar = { attack: 75, defense: 80, form: 60, xg: a.xg.away * 40, market: 65 };
 
     document.getElementById('detailContent').innerHTML = `
       <div class="hero-card">
@@ -28,7 +31,6 @@ const Detail = {
       </div>
 
       <div class="prob-section">
-        <!-- 🎯 Donut Chart -->
         <div class="donut-chart" style="--home-p: ${homeP}%; --draw-p: ${drawP}%;">
           <div class="donut-inner">
             <div class="donut-inner-title">${I18n.t('confidence')}</div>
@@ -54,11 +56,22 @@ const Detail = {
         </div>
       </div>
 
-      <div class="factor-section">
-        <div class="section-label" style="margin-bottom:14px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>
-          ${I18n.t('tactical')}
+      <!-- 📊 Tactical Radar Chart -->
+      <div class="radar-section">
+        <div class="section-label" style="align-self:flex-start;margin-bottom:10px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          ${I18n.t('tactical')} (Radar)
         </div>
+        <div class="radar-container">
+          ${Helpers.renderRadar(homeRadar, awayRadar)}
+        </div>
+        <div class="radar-legend">
+          <span class="home">● ${m.home}</span>
+          <span class="away">● ${m.away}</span>
+        </div>
+      </div>
+
+      <div class="factor-section">
         <div class="factor-row"><div class="factor-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>${I18n.t('weather')}</div><div class="factor-value">${Helpers.translateWeather(a.weather.desc)} ${a.weather.temp}</div></div>
         <div class="factor-row"><div class="factor-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="6"/><path d="M14 12h8"/><path d="M14 8h5"/><path d="M14 16h5"/></svg>${I18n.t('referee')}</div><div class="factor-value">${Helpers.translateReferee(a.referee)}</div></div>
         <div class="factor-row"><div class="factor-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2"/><path d="M4 22s.5-2 1-3a5 5 0 0 1 5-3h1l3 4"/><path d="m6 12 3-2 4 1 1-3 4-1"/><path d="m13 14 5-3 2 3"/></svg>${I18n.t('fatigue')}</div><div class="factor-value">${Helpers.translateFatigue(a.fatigue.home)} / ${Helpers.translateFatigue(a.fatigue.away)}</div></div>
