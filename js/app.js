@@ -15,19 +15,44 @@ const App = {
   },
 
   bindEvents() {
-    const langBtn = document.getElementById('langBtn');
-    if (langBtn) langBtn.addEventListener('click', () => this.toggleLang());
+    document.getElementById('langBtn').addEventListener('click', () => this.toggleLang());
+    document.getElementById('backBtn').addEventListener('click', () => Navigation.showScreen('dashboard'));
 
-    const backBtn = document.getElementById('backBtn');
-    if (backBtn) {
-      backBtn.addEventListener('click', () => Navigation.showScreen('dashboard'));
-    }
-
-    // 🔊 تفعيل الصوت والاهتزاز لكل زر أو بطاقة
+    // صوت واهتزاز
     document.body.addEventListener('click', (e) => {
       if (e.target.closest('button') || e.target.closest('.pick-card') || e.target.closest('.nav-item')) {
         Helpers.haptic();
         Helpers.playClick();
+      }
+    });
+
+    // 🔄 Pull-to-Refresh (سحب للتحديث)
+    let startY = 0;
+    let pulling = false;
+    const dashboard = document.getElementById('dashboard');
+    
+    dashboard.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+    }, { passive: true });
+
+    dashboard.addEventListener('touchmove', (e) => {
+      if (!pulling) return;
+      const y = e.touches[0].clientY;
+      const dist = y - startY;
+      if (dist > 0 && window.scrollY === 0) {
+        document.body.style.transform = `translateY(${Math.min(dist * 0.3, 50)}px)`;
+      }
+    }, { passive: true });
+
+    dashboard.addEventListener('touchend', (e) => {
+      if (!pulling) return;
+      const dist = e.changedTouches[0].clientY - startY;
+      document.body.style.transform = '';
+      pulling = false;
+      if (dist > 100) {
+        // تشغيل التحديث
+        Helpers.haptic();
+        this.loadMatches();
       }
     });
   },
@@ -45,12 +70,11 @@ const App = {
     Navigation.showScreen('dashboard');
     I18n.apply();
     this.loadMatches();
-    
-    // ⏱️ تشغيل المؤقتات التنازلية
     Helpers.startCountdowns();
   },
 
   async loadMatches() {
+    // محاكاة تأخير التحديث
     STATE.matches = DEMO_MATCHES;
     Dashboard.render();
   }
