@@ -1,25 +1,47 @@
-/* ========== PICK CARDS ========== */
+/* ========== PICK CARDS (GLASSMORPHISM) ========== */
 .pick-card {
-  background: var(--card);
+  background: rgba(13, 17, 28, 0.4);
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 18px;
   margin-bottom: 14px;
   cursor: pointer;
-  transition: 0.25s;
+  transition: transform 0.2s, background 0.2s;
   position: relative;
+  /* السر هنا: تأثير الزجاج المصنفر */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
 }
-.pick-card:active { transform: scale(0.98); }
 
+.pick-card:active { transform: scale(0.97); background: rgba(13, 17, 28, 0.7); }
+
+/* ========== AURORA BORDER (GOLDEN PICKS) ========== */
 .pick-card.golden {
-  border-color: rgba(245,158,11,0.4);
-  background: linear-gradient(135deg, rgba(245,158,11,0.06) 0%, var(--card) 100%);
+  background: rgba(20, 15, 5, 0.4); /* لمسة ذهبية شفافة */
+  border: 1px solid transparent;
 }
+
 .pick-card.golden::before {
   content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--vip), transparent);
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: 18px;
+  background: linear-gradient(45deg, var(--purple), var(--cyan), var(--vip), var(--vip), var(--purple));
+  background-size: 300% 300%;
+  animation: aurora 4s ease infinite;
+  opacity: 0.6;
+}
+
+@keyframes aurora {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.pick-card.golden:active {
+  background: rgba(30, 20, 5, 0.7);
 }
 
 .pick-header {
@@ -36,25 +58,29 @@
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 9px; font-weight: 800; color: var(--text-2);
 }
+
+/* ========== COUNTDOWN TIMER ========== */
+.time-tag-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .time-tag {
   font-size: 11px; font-weight: 700; color: var(--text);
   font-family: ui-monospace, monospace;
   padding: 4px 10px;
   background: var(--card-2); border-radius: 8px;
 }
-
-.pick-teams {
-  display: flex; flex-direction: column; gap: 10px;
-  margin-bottom: 16px;
+.countdown-timer {
+  font-size: 10px; color: var(--vip); font-weight: 800;
+  font-family: ui-monospace, monospace;
+  animation: pulse 2s infinite;
 }
+
+.pick-teams { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .team-row { display: flex; align-items: center; gap: 12px; }
 .team-badge {
   width: 32px; height: 32px; border-radius: 10px;
   background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.2));
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 800; color: #fff;
-  flex-shrink: 0;
-  border: 1px solid var(--border);
+  flex-shrink: 0; border: 1px solid var(--border);
 }
 .team-name { font-size: 15px; font-weight: 600; color: var(--text); }
 
@@ -70,6 +96,12 @@
 }
 .ev-badge svg { width: 14px; height: 14px; color: var(--pos); }
 
+/* ========== SPARKLINE ========== */
+.sparkline-wrap {
+  width: 60px; height: 20px; margin: 0 12px;
+  opacity: 0.8;
+}
+
 .stars { display: flex; gap: 2px; }
 .star-f { color: var(--vip); width: 14px; height: 14px; }
 .star-e { color: var(--text-3); width: 14px; height: 14px; }
@@ -79,21 +111,10 @@
   font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
   display: flex; align-items: center; gap: 4px;
 }
-.trap-clean {
-  background: rgba(16,185,129,0.1); color: var(--pos);
-  border: 1px solid rgba(16,185,129,0.3);
-}
-.trap-trap {
-  background: rgba(244,63,94,0.1); color: var(--neg);
-  border: 1px solid rgba(244,63,94,0.3);
-}
-.trap-caution {
-  background: rgba(245,158,11,0.1); color: var(--vip);
-  border: 1px solid rgba(245,158,11,0.3);
-}
+.trap-clean { background: rgba(16,185,129,0.1); color: var(--pos); border: 1px solid rgba(16,185,129,0.3); }
+.trap-trap { background: rgba(244,63,94,0.1); color: var(--neg); border: 1px solid rgba(244,63,94,0.3); }
+.trap-caution { background: rgba(245,158,11,0.1); color: var(--vip); border: 1px solid rgba(245,158,11,0.3); }
 
-.empty-state {
-  text-align: center; padding: 60px 20px; color: var(--text-2);
-}
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-2); }
 .empty-state-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 .empty-state-sub { font-size: 12px; }
