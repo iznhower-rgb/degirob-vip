@@ -13,9 +13,7 @@ const App = {
         Navigation.showScreen('paywall');
         Paywall.init();
       }
-    } catch (e) {
-      console.error("Init Error:", e);
-    }
+    } catch (e) { console.error("Init Error:", e); }
   },
 
   bindEvents() {
@@ -26,7 +24,6 @@ const App = {
       const backBtn = document.getElementById('backBtn');
       if (backBtn) backBtn.addEventListener('click', () => Navigation.showScreen('dashboard'));
 
-      // صوت واهتزاز
       document.body.addEventListener('click', (e) => {
         if (e.target.closest('button') || e.target.closest('.pick-card') || e.target.closest('.nav-item')) {
           Helpers.haptic();
@@ -34,12 +31,9 @@ const App = {
         }
       });
 
-      // 🔄 Pull-to-Refresh (محمي ضد الأخطاء)
       const dashboard = document.getElementById('dashboard');
       if (dashboard) {
-        let startY = 0;
-        let pulling = false;
-        
+        let startY = 0; let pulling = false;
         dashboard.addEventListener('touchstart', (e) => {
           if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
         }, { passive: true });
@@ -58,21 +52,15 @@ const App = {
           const dist = e.changedTouches[0].clientY - startY;
           document.body.style.transform = '';
           pulling = false;
-          if (dist > 100) {
-            Helpers.haptic();
-            this.loadMatches();
-          }
+          if (dist > 100) { Helpers.haptic(); this.loadMatches(); }
         });
       }
-    } catch (e) {
-      console.error("Bind Events Error:", e);
-    }
+    } catch (e) { console.error("Bind Error:", e); }
   },
 
   toggleLang() {
     try {
-      I18n.toggle();
-      I18n.apply();
+      I18n.toggle(); I18n.apply();
       if (STATE.matches.length) Dashboard.render();
       if (STATE.currentMatchId) Detail.open(STATE.currentMatchId);
     } catch (e) {}
