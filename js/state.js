@@ -1,6 +1,6 @@
-const STATE = { 
-  matches: [], 
-  history: [], // تمت الإضافة
-  lang: 'ar', 
-  currentMatchId: null 
+const STATE = {
+  matches: [],
+  favorites: [],
+  lang: CONFIG.DEFAULT_LANG,
+  currentMatchId: null
 };
