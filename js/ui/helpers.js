@@ -10,23 +10,10 @@ const Helpers = {
     return html;
   },
 
-  escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  },
-
   translateWeather(desc) {
-    const map = {
-      'Clear': 'صافٍ',
-      'Rain': 'ممطر',
-      'Windy': 'رياح',
-      'Cloudy': 'غائم'
-    };
+    const map = { 'Clear': 'صافٍ', 'Rain': 'ممطر', 'Windy': 'رياح', 'Cloudy': 'غائم' };
     if (STATE.lang === 'ar') {
-      for (const key in map) {
-        if (desc.includes(key)) return map[key];
-      }
+      for (const key in map) { if (desc.includes(key)) return map[key]; }
     }
     return desc;
   },
@@ -40,9 +27,7 @@ const Helpers = {
   },
 
   translateFatigue(f) {
-    if (STATE.lang === 'ar') {
-      return f === 'Fresh' ? 'جاهز' : 'مرهق';
-    }
+    if (STATE.lang === 'ar') return f === 'Fresh' ? 'جاهز' : 'مرهق';
     return f;
   },
 
@@ -52,5 +37,82 @@ const Helpers = {
       return map[c] || c;
     }
     return c;
+  },
+
+  // ✨ Haptic Feedback (اهتزاز الهاتف)
+  haptic() {
+    if (navigator.vibrate) navigator.vibrate(15);
+  },
+
+  // 🔊 Sound Feedback (نغمة ضغطة خفيفة)
+  playClick() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch (e) {}
+  },
+
+  // 🔢 Animate Numbers (عداد الأرقام المتحرك)
+  animateValue(element, start, end, duration, suffix = '') {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3); // تأثير بطيء في النهاية
+      const current = Math.floor(easeOut * (end - start) + start);
+      element.textContent = current + suffix;
+      if (progress < 1) window.requestAnimationFrame(step);
+      else element.textContent = end + suffix;
+    };
+    window.requestAnimationFrame(step);
+  },
+
+  // 📈 Sparkline (المخطط الخطي المصغر)
+  renderSparkline(data, color) {
+    if (!data || !data.length) return '';
+    const w = 60, h = 20;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const points = data.map((val, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((val - min) / range) * h;
+      return `${x},${y}`;
+    }).join(' ');
+    return `<svg class="sparkline-wrap" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  },
+
+  // ⏱️ Countdown Timer (المؤقت التنازلي)
+  startCountdowns() {
+    setInterval(() => {
+      document.querySelectorAll('.countdown-timer').forEach(el => {
+        const targetTime = new Date(el.getAttribute('data-time')).getTime();
+        const now = new Date().getTime();
+        const diff = targetTime - now;
+
+        if (diff < 0) {
+          el.innerHTML = `● LIVE NOW`;
+          el.style.color = 'var(--red)';
+        } else {
+          const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const s = Math.floor((diff % (1000 * 60)) / 1000);
+          el.innerHTML = `⏱ ${h}h ${m}m ${s}s`;
+        }
+      });
+    }, 1000);
   }
 };
