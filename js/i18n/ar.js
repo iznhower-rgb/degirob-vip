@@ -1,4 +1,3 @@
-
 const TRANSLATIONS_AR = {
   // Paywall
   paywallSub: 'الاستخبارات التكتيكية للنخبة',
@@ -21,6 +20,14 @@ const TRANSLATIONS_AR = {
 
   // Nav
   home: 'الرئيسية',
+  favorites: 'المفضلة',
+
+  // Favorites
+  myFavorites: 'مبارياتي المفضلة',
+  myFavoritesSub: 'المباريات التي حفظتها',
+  matchesSaved: 'مباريات محفوظة',
+  noFavorites: 'لا توجد مباريات مفضلة',
+  noFavoritesSub: 'اضغط على النجمة ⭐ في أي تحليل لحفظه هنا',
 
   // Detail
   matchAnalysis: 'تحليل المباراة',
