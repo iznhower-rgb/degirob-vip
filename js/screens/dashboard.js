@@ -1,202 +1,165 @@
-const Dashboard = {
-  render() {
-    if (STATE.apiStatus === 'error' || !STATE.matches.length) {
-      this.updateStatsEmpty();
-      this.showError();
-      this.renderStatusBadge();
-      return;
-    }
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#05070D">
+  <title>DeGirob VIP</title>
 
-    const sorted = [...STATE.matches].sort((a, b) => b.analysis.ev - a.analysis.ev);
-    const golden = sorted.filter(m => m.analysis.confidence !== 'low').slice(0, 3);
-    const more = sorted.filter(m => !golden.includes(m)).slice(0, 5);
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DeGirob VIP">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 
-    const goldenEl = document.getElementById('goldenPicks');
-    const moreEl = document.getElementById('morePicks');
+  <!-- Debug -->
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
 
-    goldenEl.innerHTML = golden.length
-      ? golden.map(m => this.renderCard(m, true)).join('')
-      : `<div class="empty-state"><div class="empty-state-title">${I18n.t('noMatches')}</div></div>`;
+  <link rel="stylesheet" href="css/main.css?v=13">
+  <link rel="stylesheet" href="css/dashboard.css?v=13">
+  <link rel="stylesheet" href="css/detail.css?v=13">
+</head>
+<body>
 
-    moreEl.innerHTML = more.map(m => this.renderCard(m, false)).join('');
+  <div id="paywall" class="screen hidden">
+    <div class="paywall-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <h1 class="paywall-title">DeGirob VIP</h1>
+    <p class="paywall-sub" data-i18n="paywallSub">Elite Tactical Intelligence</p>
+    <div class="features-list">
+      <div class="feature-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span data-i18n="feat1">8 Golden Picks Daily</span>
+      </div>
+      <div class="feature-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span data-i18n="feat2">AI + Market Analysis</span>
+      </div>
+      <div class="feature-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span data-i18n="feat3">Trap Detection</span>
+      </div>
+      <div class="feature-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span data-i18n="feat4">Arabic + English</span>
+      </div>
+    </div>
+    <form id="keyForm">
+      <input type="text" id="keyInput" class="key-input" placeholder="ENTER LICENSE KEY" autocomplete="off" spellcheck="false">
+      <button type="submit" class="unlock-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>
+        </svg>
+        <span data-i18n="unlockBtn">UNLOCK ACCESS</span>
+      </button>
+    </form>
+    <p class="paywall-hint">Demo: DEGIROB-2026</p>
+  </div>
 
-    this.updateStats();
-    this.renderStatusBadge();
-  },
-
-  updateStats() {
-    if (!STATE.matches.length) return this.updateStatsEmpty();
-
-    const avgEV = STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length;
-    const avgStars = STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length;
-    const accuracy = Math.round((avgStars / 5) * 100);
-
-    this.animateStat('statPicks', STATE.matches.length, '', '', 0);
-    this.animateStat('statEV', avgEV, '+', '%', 1);
-    this.animateStat('statAccuracy', accuracy, '', '%', 0);
-
-    const accEl = document.getElementById('statAccuracy');
-    accEl.style.color = accuracy >= 65 ? 'var(--pos)'
-                      : accuracy >= 50 ? 'var(--vip)'
-                      : 'var(--neg)';
-  },
-
-  animateStat(id, target, prefix, suffix, decimals) {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    const currentText = el.textContent || '';
-    const currentNum = parseFloat(currentText.replace(/[^0-9.-]/g, ''));
-    const current = isNaN(currentNum) ? 0 : currentNum;
-
-    // إذا كانت القيمة الحالية = الهدف → لا نعيد الأنيميشن
-    if (Math.abs(current - target) < 0.05) {
-      el.textContent = prefix + (decimals > 0 ? target.toFixed(decimals) : Math.round(target)) + suffix;
-      return;
-    }
-
-    const duration = 800;
-    const startTime = performance.now();
-    const startVal = current;
-
-    const tick = (now) => {
-      const progress = Math.min((now - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const val = startVal + (target - startVal) * eased;
-      el.textContent = prefix + (decimals > 0 ? val.toFixed(decimals) : Math.round(val)) + suffix;
-      if (progress < 1) requestAnimationFrame(tick);
-      else el.textContent = prefix + (decimals > 0 ? target.toFixed(decimals) : Math.round(target)) + suffix;
-    };
-    requestAnimationFrame(tick);
-  },
-
-  updateStatsEmpty() {
-    document.getElementById('statPicks').textContent = '0';
-    document.getElementById('statEV').textContent = '+0%';
-    const accEl = document.getElementById('statAccuracy');
-    accEl.textContent = '0%';
-    accEl.style.color = 'var(--neg)';
-  },
-
-  renderStatusBadge() {
-    let badge = document.getElementById('statusBadge');
-    if (!badge) {
-      badge = document.createElement('div');
-      badge.id = 'statusBadge';
-      badge.style.cssText =
-        'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:999;' +
-        'padding:7px 16px;border-radius:20px;font-size:10px;font-weight:900;' +
-        'letter-spacing:1.5px;backdrop-filter:blur(10px);text-transform:uppercase;' +
-        'cursor:pointer;font-family:ui-monospace,monospace;';
-      badge.addEventListener('click', () => {
-        if (window.eruda) eruda.show();
-      });
-      document.body.appendChild(badge);
-    }
-    const map = {
-      loading: { bg: 'rgba(139,92,246,0.15)', bd: 'rgba(139,92,246,0.5)', cl: '#8B5CF6', tx: '⏳ LOADING' },
-      live:    { bg: 'rgba(16,185,129,0.15)', bd: 'rgba(16,185,129,0.5)', cl: '#10B981', tx: '🟢 LIVE ' + STATE.matches.length },
-      error:   { bg: 'rgba(244,63,94,0.15)',  bd: 'rgba(244,63,94,0.5)',  cl: '#F43F5E', tx: '🔴 ' + (STATE.apiError?.code || 'ERROR') }
-    };
-    const s = map[STATE.apiStatus] || map.loading;
-    badge.style.background = s.bg;
-    badge.style.border = '1px solid ' + s.bd;
-    badge.style.color = s.cl;
-    badge.textContent = s.tx;
-    badge.style.display = 'block';
-  },
-
-  showLoading() {
-    const sk = `
-      <div class="skeleton-card">
-        <div class="skeleton skeleton-line" style="width:40%"></div>
-        <div class="skeleton skeleton-line" style="width:80%;height:20px;margin-top:14px"></div>
-        <div class="skeleton skeleton-line" style="width:60%;height:20px;margin-top:10px"></div>
-        <div class="skeleton skeleton-line" style="width:100%;height:1px;margin-top:20px"></div>
-      </div>`;
-    const g = document.getElementById('goldenPicks');
-    const m = document.getElementById('morePicks');
-    if (g) g.innerHTML = sk + sk + sk;
-    if (m) m.innerHTML = '';
-  },
-
-  showError() {
-    const e = STATE.apiError || { code: 'UNKNOWN', message: 'خطأ غير معروف', detail: '' };
-    const friendly = {
-      'NO_API_KEY': 'لم يتم إعداد مفتاح API',
-      'KEY_INVALID': 'المفتاح غير صالح',
-      'NO_MATCHES': '0 مباريات اليوم — جرّب لاحقاً',
-      'NORMALIZE_FAILED': 'تعذّر تحويل البيانات',
-      'API_ERROR': 'خطأ من API-Football',
-      'UNKNOWN': 'خطأ غير معروف'
-    };
-    const html = `
-      <div class="empty-state" style="padding:40px 20px">
-        <div style="font-size:40px;margin-bottom:16px">⚠️</div>
-        <div class="empty-state-title" style="margin-bottom:10px;font-size:15px">
-          ${friendly[e.code] || e.message}
+  <div id="dashboard" class="screen">
+    <header>
+      <div class="logo"><span class="logo-dot"></span>DeGirob VIP</div>
+      <div class="header-actions">
+        <button class="icon-btn lang-toggle" id="langBtn"><span>EN</span></button>
+      </div>
+    </header>
+    <main>
+      <h1 class="greeting" data-i18n="greeting">Welcome</h1>
+      <p class="greeting-sub" data-i18n="greetingSub">Briefing</p>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val" id="statPicks">0</div>
+          <div class="stat-lbl" data-i18n="picks">Picks</div>
         </div>
-        <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-family:ui-monospace,monospace">${e.code}</div>
-        <div style="font-size:10px;color:var(--text-3);margin-bottom:24px;font-family:ui-monospace,monospace;word-break:break-all;max-width:340px;margin:0 auto">${(e.detail || e.message || '').substring(0, 200)}</div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <button class="retry-btn" onclick="App.loadMatches()">🔄 إعادة المحاولة</button>
-          <button class="retry-btn" style="background:linear-gradient(135deg,#F43F5E,#DC2626)" onclick="API.clearCache();location.reload()">🗑️ مسح cache</button>
-          <button class="retry-btn" style="background:linear-gradient(135deg,#6B7280,#4B5563)" onclick="if(window.eruda)eruda.show()">🔍 Console</button>
+        <div class="stat-card">
+          <div class="stat-val" id="statAccuracy">0%</div>
+          <div class="stat-lbl" data-i18n="accuracy">Accuracy</div>
         </div>
-      </div>`;
-    const g = document.getElementById('goldenPicks');
-    const m = document.getElementById('morePicks');
-    if (g) g.innerHTML = html;
-    if (m) m.innerHTML = '';
-  },
-
-  renderBadge(name, logoUrl) {
-    const letter = Helpers.escapeHtml(name.charAt(0));
-    if (!logoUrl) {
-      return `<div class="team-badge"><span class="team-letter">${letter}</span></div>`;
-    }
-    const safeUrl = Helpers.escapeHtml(logoUrl);
-    return `<div class="team-badge has-logo"><span class="team-letter">${letter}</span><img src="${safeUrl}" class="team-logo" alt="" onerror="this.parentNode.classList.remove('has-logo')"></div>`;
-  },
-
-  renderCard(m, isGolden) {
-    const a = m.analysis;
-    const marketClass = a.market === 'clean' ? 'trap-clean' : a.market === 'trap' ? 'trap-trap' : 'trap-caution';
-    const marketText = a.market === 'clean' ? 'CLEAN' : a.market === 'trap' ? 'TRAP' : 'CAUTION';
-
-    const homeName = Helpers.teamName(m.home);
-    const awayName = Helpers.teamName(m.away);
-
-    return `
-      <div class="pick-card ${isGolden ? 'golden' : ''}" onclick="Detail.open('${m.id}')">
-        <div class="pick-header">
-          <div class="league-tag">
-            <span class="league-badge">${m.leagueBadge}</span>
-            <span>${m.league}</span>
-          </div>
-          <div class="time-tag">${m.time}</div>
-        </div>
-        <div class="pick-teams">
-          <div class="team-row">
-            ${this.renderBadge(homeName, m.homeLogo)}
-            <div class="team-name">${homeName}</div>
-          </div>
-          <div class="team-row">
-            ${this.renderBadge(awayName, m.awayLogo)}
-            <div class="team-name">${awayName}</div>
-          </div>
-        </div>
-        <div class="pick-footer">
-          <div class="ev-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
-            </svg>
-            +${a.ev}% EV
-          </div>
-          <div class="stars">${Helpers.renderStars(a.stars)}</div>
-          <div class="trap-indicator ${marketClass}">● ${marketText}</div>
+        <div class="stat-card">
+          <div class="stat-val" id="statEV" style="color:var(--vip)">+0%</div>
+          <div class="stat-lbl" data-i18n="avgEV">Avg EV</div>
         </div>
       </div>
-    `;
-  }
-};
+      <div class="section-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+        <span data-i18n="goldenPicks">Golden Picks</span>
+      </div>
+      <div id="goldenPicks"></div>
+      <div class="section-label" style="margin-top:24px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+        </svg>
+        <span data-i18n="morePicks">More Opportunities</span>
+      </div>
+      <div id="morePicks"></div>
+    </main>
+  </div>
+
+  <div id="favorites" class="screen">
+    <header>
+      <div class="logo"><span class="logo-dot"></span>DeGirob VIP</div>
+      <div class="header-actions">
+        <button class="icon-btn lang-toggle"><span>EN</span></button>
+      </div>
+    </header>
+    <main>
+      <h1 class="greeting" data-i18n="myFavorites">My Favorites</h1>
+      <p class="greeting-sub" data-i18n="myFavoritesSub">Your saved matches</p>
+      <div id="favoritesList"></div>
+    </main>
+  </div>
+
+  <div id="detail" class="screen">
+    <div class="detail-header">
+      <button class="icon-btn" id="backBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+      </button>
+      <div class="detail-title" data-i18n="matchAnalysis">Match Analysis</div>
+    </div>
+    <div class="detail-body" id="detailContent"></div>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav" style="display:none">
+    <div class="nav-item active" data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span data-i18n="home">Home</span>
+    </div>
+    <div class="nav-item" data-tab="favorites">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      <span data-i18n="favorites">Favorites</span>
+    </div>
+  </nav>
+
+  <script src="js/config.js?v=13"></script>
+  <script src="js/state.js?v=13"></script>
+  <script src="js/storage.js?v=13"></script>
+  <script src="js/i18n/ar.js?v=13"></script>
+  <script src="js/i18n/en.js?v=13"></script>
+  <script src="js/i18n.js?v=13"></script>
+  <script src="js/data/teams-ar.js?v=13"></script>
+  <script src="js/api.js?v=13"></script>
+  <script src="js/engine.js?v=13"></script>
+  <script src="js/ui/helpers.js?v=13"></script>
+  <script src="js/ui/navigation.js?v=13"></script>
+  <script src="js/screens/paywall.js?v=13"></script>
+  <script src="js/screens/dashboard.js?v=13"></script>
+  <script src="js/screens/detail.js?v=13"></script>
+  <script src="js/screens/favorites.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
+</body>
+</html>
