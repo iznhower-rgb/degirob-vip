@@ -1,4 +1,16 @@
 const Helpers = {
+  teamName(name) {
+    if (!name) return '';
+    if (STATE.lang !== 'ar') return name;
+    if (typeof TEAMS_AR === 'undefined') return name;
+    if (TEAMS_AR[name]) return TEAMS_AR[name];
+    const lower = name.toLowerCase();
+    for (const key in TEAMS_AR) {
+      if (key.toLowerCase() === lower) return TEAMS_AR[key];
+    }
+    return name;
+  },
+
   renderStars(n) {
     let html = '';
     for (let i = 1; i <= 5; i++) {
@@ -17,12 +29,7 @@ const Helpers = {
   },
 
   translateWeather(desc) {
-    const map = {
-      'Clear': 'صافٍ',
-      'Rain': 'ممطر',
-      'Windy': 'رياح',
-      'Cloudy': 'غائم'
-    };
+    const map = { 'Clear': 'صافٍ', 'Rain': 'ممطر', 'Windy': 'رياح', 'Cloudy': 'غائم' };
     if (STATE.lang === 'ar') {
       for (const key in map) {
         if (desc.includes(key)) return map[key];
@@ -40,9 +47,7 @@ const Helpers = {
   },
 
   translateFatigue(f) {
-    if (STATE.lang === 'ar') {
-      return f === 'Fresh' ? 'جاهز' : 'مرهق';
-    }
+    if (STATE.lang === 'ar') return f === 'Fresh' ? 'جاهز' : 'مرهق';
     return f;
   },
 
