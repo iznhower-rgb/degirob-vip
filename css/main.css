@@ -287,3 +287,45 @@ main { padding: 28px 20px; max-width: 800px; margin: 0 auto; }
   filter: drop-shadow(0 0 10px rgba(139,92,246,0.8));
   transform: scale(1.1);
 }
+/* ========== SKELETON LOADING ========== */
+.skeleton-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.03) 0%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.03) 100%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-line { height: 12px; margin-bottom: 10px; }
+.skeleton-line:last-child { margin-bottom: 0; }
+
+/* ========== RETRY BUTTON ========== */
+.retry-btn {
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  box-shadow: 0 8px 24px rgba(139,92,246,0.3);
+}
+.retry-btn:active { transform: scale(0.97); }
