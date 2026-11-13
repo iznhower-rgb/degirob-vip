@@ -5,9 +5,12 @@ const Detail = {
     STATE.currentMatchId = id;
     const a = m.analysis;
 
-    let betName = m.home;
+    const homeName = Helpers.teamName(m.home);
+    const awayName = Helpers.teamName(m.away);
+
+    let betName = homeName;
     if (a.bestBet === 'draw') betName = I18n.t('draw');
-    else if (a.bestBet === 'away') betName = m.away;
+    else if (a.bestBet === 'away') betName = awayName;
 
     const isFav = STATE.favorites.includes(id);
 
@@ -46,13 +49,13 @@ const Detail = {
       <div class="hero-card">
         <div class="hero-teams">
           <div class="hero-team">
-            <div class="hero-team-badge">${m.home.charAt(0)}</div>
-            <div class="hero-team-name">${m.home}</div>
+            <div class="hero-team-badge">${homeName.charAt(0)}</div>
+            <div class="hero-team-name">${homeName}</div>
           </div>
           <div class="hero-vs">VS</div>
           <div class="hero-team">
-            <div class="hero-team-badge">${m.away.charAt(0)}</div>
-            <div class="hero-team-name">${m.away}</div>
+            <div class="hero-team-badge">${awayName.charAt(0)}</div>
+            <div class="hero-team-name">${awayName}</div>
           </div>
         </div>
         <div class="hero-meta">${m.league} • ${m.time}</div>
@@ -112,56 +115,43 @@ const Detail = {
         </div>
         <div class="factor-row">
           <div class="factor-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/>
-              <path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/>
-              <path d="M2 12h2"/><path d="M20 12h2"/>
-              <path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
             ${I18n.t('weather')}
           </div>
           <div class="factor-value">${Helpers.translateWeather(a.weather.desc)} ${a.weather.temp}</div>
         </div>
         <div class="factor-row">
           <div class="factor-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="8" cy="12" r="6"/><path d="M14 12h8"/><path d="M14 8h5"/><path d="M14 16h5"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="6"/><path d="M14 12h8"/><path d="M14 8h5"/><path d="M14 16h5"/></svg>
             ${I18n.t('referee')}
           </div>
           <div class="factor-value">${Helpers.translateReferee(a.referee)}</div>
         </div>
         <div class="factor-row">
           <div class="factor-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="13" cy="4" r="2"/>
-              <path d="M4 22s.5-2 1-3a5 5 0 0 1 5-3h1l3 4"/>
-              <path d="m6 12 3-2 4 1 1-3 4-1"/>
-              <path d="m13 14 5-3 2 3"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2"/><path d="M4 22s.5-2 1-3a5 5 0 0 1 5-3h1l3 4"/><path d="m6 12 3-2 4 1 1-3 4-1"/><path d="m13 14 5-3 2 3"/></svg>
             ${I18n.t('fatigue')}
           </div>
           <div class="factor-value">${Helpers.translateFatigue(a.fatigue.home)} / ${Helpers.translateFatigue(a.fatigue.away)}</div>
         </div>
         <div class="factor-row">
           <div class="factor-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
             ${I18n.t('coach')}
           </div>
           <div class="factor-value">${Helpers.translateCoach(a.coach)}</div>
         </div>
         <div class="factor-row">
           <div class="factor-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="10"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="10"/></svg>
             ${I18n.t('xg')}
           </div>
           <div class="factor-value">${a.xg.home} - ${a.xg.away}</div>
         </div>
       </div>
+
+      <div id="h2hSection">${this.renderH2HSkeleton()}</div>
+      <div id="standingsSection">${this.renderStandingsSkeleton()}</div>
 
       <div class="action-row">
         <button class="action-btn ${isFav ? 'active' : ''}" onclick="Detail.toggleFav('${id}')">
@@ -174,6 +164,161 @@ const Detail = {
     `;
 
     Navigation.showScreen('detail');
+    this.loadRichData(m);
+  },
+
+  async loadRichData(m) {
+    this.loadH2H(m, m.id);
+    this.loadStandings(m, m.id);
+  },
+
+  async loadH2H(m, expectedId) {
+    try {
+      const h2h = await API.fetchH2H(m.homeId, m.awayId);
+      if (STATE.currentMatchId !== expectedId) return;
+      const el = document.getElementById('h2hSection');
+      if (el) el.innerHTML = this.renderH2H(h2h, m);
+    } catch (e) {
+      if (STATE.currentMatchId !== expectedId) return;
+      const el = document.getElementById('h2hSection');
+      if (el) el.innerHTML = this.renderSectionError(I18n.t('h2h'), I18n.t('noH2H'));
+    }
+  },
+
+  async loadStandings(m, expectedId) {
+    try {
+      const standings = await API.fetchStandings(m.leagueId, m.season);
+      if (STATE.currentMatchId !== expectedId) return;
+      const el = document.getElementById('standingsSection');
+      if (el) el.innerHTML = this.renderStandings(standings, m);
+    } catch (e) {
+      if (STATE.currentMatchId !== expectedId) return;
+      const el = document.getElementById('standingsSection');
+      if (el) el.innerHTML = this.renderSectionError(I18n.t('standings'), I18n.t('noStandings'));
+    }
+  },
+
+  renderH2HSkeleton() {
+    return `
+      <div class="factor-section">
+        <div class="section-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3v18M16 3v18M3 8h18M3 16h18"/>
+          </svg>
+          ${I18n.t('h2h')}
+        </div>
+        <div class="skeleton skeleton-line" style="width:100%;height:44px;margin-top:10px"></div>
+        <div class="skeleton skeleton-line" style="width:100%;height:44px;margin-top:8px"></div>
+        <div class="skeleton skeleton-line" style="width:100%;height:44px;margin-top:8px"></div>
+      </div>
+    `;
+  },
+
+  renderStandingsSkeleton() {
+    return `
+      <div class="factor-section">
+        <div class="section-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          ${I18n.t('standings')}
+        </div>
+        <div class="skeleton skeleton-line" style="width:100%;height:36px;margin-top:10px"></div>
+        <div class="skeleton skeleton-line" style="width:100%;height:36px;margin-top:8px"></div>
+        <div class="skeleton skeleton-line" style="width:100%;height:36px;margin-top:8px"></div>
+      </div>
+    `;
+  },
+
+  renderH2H(h2h, m) {
+    if (!h2h || !h2h.length) {
+      return this.renderSectionError(I18n.t('h2h'), I18n.t('noH2H'));
+    }
+    const dateLocale = STATE.lang === 'ar' ? 'ar' : 'en-GB';
+
+    return `
+      <div class="factor-section">
+        <div class="section-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3v18M16 3v18M3 8h18M3 16h18"/>
+          </svg>
+          ${I18n.t('h2h')} (${h2h.length})
+        </div>
+        ${h2h.map(h => {
+          const d = new Date(h.date);
+          const dateStr = d.toLocaleDateString(dateLocale, { day: '2-digit', month: 'short' });
+          const hName = Helpers.teamName(h.homeName);
+          const aName = Helpers.teamName(h.awayName);
+          return `
+            <div class="h2h-row">
+              <span class="h2h-date">${dateStr}</span>
+              <span class="h2h-team">${hName}</span>
+              <span class="h2h-score">${h.homeGoals} - ${h.awayGoals}</span>
+              <span class="h2h-team h2h-team-away">${aName}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+
+  renderStandings(standings, m) {
+    if (!standings || !standings.length) {
+      return this.renderSectionError(I18n.t('standings'), I18n.t('noStandings'));
+    }
+
+    const homeRank = standings.find(s => s.teamId === m.homeId);
+    const awayRank = standings.find(s => s.teamId === m.awayId);
+
+    const toShow = standings.slice(0, 5);
+    if (homeRank && homeRank.rank > 5) toShow.push(homeRank);
+    if (awayRank && awayRank.rank > 5) toShow.push(awayRank);
+
+    return `
+      <div class="factor-section">
+        <div class="section-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          ${I18n.t('standings')}
+        </div>
+        <div class="standings-header">
+          <span>${I18n.t('rank')}</span>
+          <span>${I18n.t('teamCol')}</span>
+          <span>${I18n.t('pts')}</span>
+        </div>
+        ${toShow.map(s => {
+          const isHome = s.teamId === m.homeId;
+          const isAway = s.teamId === m.awayId;
+          const cls = isHome ? 'standings-home' : (isAway ? 'standings-away' : '');
+          return `
+            <div class="standings-row ${cls}">
+              <span class="standings-rank">${s.rank}</span>
+              <span class="standings-team">${Helpers.teamName(s.teamName)}</span>
+              <span class="standings-pts">${s.points}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+
+  renderSectionError(title, message) {
+    return `
+      <div class="factor-section">
+        <div class="section-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+          </svg>
+          ${title}
+        </div>
+        <div style="text-align:center;padding:20px 10px;color:var(--text-3);font-size:12px">
+          ${message}
+        </div>
+      </div>
+    `;
   },
 
   toggleFav(id) {
