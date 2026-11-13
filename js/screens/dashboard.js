@@ -26,19 +26,14 @@ const Dashboard = {
 
   updateStats() {
     if (!STATE.matches.length) return this.updateStatsEmpty();
-
     const avgEV = (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1);
     const avgStars = STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length;
     const accuracy = Math.round((avgStars / 5) * 100);
-
     document.getElementById('statPicks').textContent = STATE.matches.length;
     document.getElementById('statEV').textContent = '+' + avgEV + '%';
-
     const accEl = document.getElementById('statAccuracy');
     accEl.textContent = accuracy + '%';
-    accEl.style.color = accuracy >= 65 ? 'var(--pos)'
-                      : accuracy >= 50 ? 'var(--vip)'
-                      : 'var(--neg)';
+    accEl.style.color = accuracy >= 65 ? 'var(--pos)' : accuracy >= 50 ? 'var(--vip)' : 'var(--neg)';
   },
 
   updateStatsEmpty() {
@@ -61,11 +56,9 @@ const Dashboard = {
         'cursor:pointer;font-family:ui-monospace,monospace;';
       badge.addEventListener('click', () => {
         if (window.eruda) eruda.show();
-        else alert('Console غير متاح');
       });
       document.body.appendChild(badge);
     }
-
     const map = {
       loading: { bg: 'rgba(139,92,246,0.15)', bd: 'rgba(139,92,246,0.5)', cl: '#8B5CF6', tx: '⏳ LOADING' },
       live:    { bg: 'rgba(16,185,129,0.15)', bd: 'rgba(16,185,129,0.5)', cl: '#10B981', tx: '🟢 LIVE ' + STATE.matches.length },
@@ -95,35 +88,28 @@ const Dashboard = {
 
   showError() {
     const e = STATE.apiError || { code: 'UNKNOWN', message: 'خطأ غير معروف', detail: '' };
-
     const friendly = {
-      'NO_API_KEY': 'لم يتم إعداد مفتاح API في config.js',
-      'KEY_INVALID': 'المفتاح غير صالح — أعد توليده من api-football.com',
-      'NO_MATCHES': 'المفتاح يعمل، لكن 0 مباريات في دورياتك اليوم. جرّب لاحقاً أو أضف دوريات أخرى.',
-      'NORMALIZE_FAILED': 'استلمنا مباريات لكن تعذّر تحويلها — أرسل تقرير Console',
+      'NO_API_KEY': 'لم يتم إعداد مفتاح API',
+      'KEY_INVALID': 'المفتاح غير صالح',
+      'NO_MATCHES': '0 مباريات اليوم — جرّب لاحقاً',
+      'NORMALIZE_FAILED': 'تعذّر تحويل البيانات',
       'API_ERROR': 'خطأ من API-Football',
       'UNKNOWN': 'خطأ غير معروف'
     };
-
     const html = `
       <div class="empty-state" style="padding:40px 20px">
         <div style="font-size:40px;margin-bottom:16px">⚠️</div>
         <div class="empty-state-title" style="margin-bottom:10px;font-size:15px">
           ${friendly[e.code] || e.message}
         </div>
-        <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-family:ui-monospace,monospace">
-          ${e.code}
-        </div>
-        <div style="font-size:10px;color:var(--text-3);margin-bottom:24px;font-family:ui-monospace,monospace;word-break:break-all;max-width:340px;margin-left:auto;margin-right:auto">
-          ${(e.detail || e.message || '').substring(0, 200)}
-        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-family:ui-monospace,monospace">${e.code}</div>
+        <div style="font-size:10px;color:var(--text-3);margin-bottom:24px;font-family:ui-monospace,monospace;word-break:break-all;max-width:340px;margin:0 auto">${(e.detail || e.message || '').substring(0, 200)}</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <button class="retry-btn" onclick="App.loadMatches()">🔄 إعادة المحاولة</button>
-          <button class="retry-btn" style="background:linear-gradient(135deg,#F43F5E,#DC2626)" onclick="API.clearCache();location.reload()">🗑️ مسح الـ cache</button>
+          <button class="retry-btn" style="background:linear-gradient(135deg,#F43F5E,#DC2626)" onclick="API.clearCache();location.reload()">🗑️ مسح cache</button>
           <button class="retry-btn" style="background:linear-gradient(135deg,#6B7280,#4B5563)" onclick="if(window.eruda)eruda.show()">🔍 Console</button>
         </div>
       </div>`;
-
     const g = document.getElementById('goldenPicks');
     const m = document.getElementById('morePicks');
     if (g) g.innerHTML = html;
@@ -134,6 +120,10 @@ const Dashboard = {
     const a = m.analysis;
     const marketClass = a.market === 'clean' ? 'trap-clean' : a.market === 'trap' ? 'trap-trap' : 'trap-caution';
     const marketText = a.market === 'clean' ? 'CLEAN' : a.market === 'trap' ? 'TRAP' : 'CAUTION';
+
+    // ✅ ترجمة أسماء الفرق
+    const homeName = Helpers.teamName(m.home);
+    const awayName = Helpers.teamName(m.away);
 
     return `
       <div class="pick-card ${isGolden ? 'golden' : ''}" onclick="Detail.open('${m.id}')">
@@ -146,12 +136,12 @@ const Dashboard = {
         </div>
         <div class="pick-teams">
           <div class="team-row">
-            <div class="team-badge">${m.home.charAt(0)}</div>
-            <div class="team-name">${m.home}</div>
+            <div class="team-badge">${homeName.charAt(0)}</div>
+            <div class="team-name">${homeName}</div>
           </div>
           <div class="team-row">
-            <div class="team-badge">${m.away.charAt(0)}</div>
-            <div class="team-name">${m.away}</div>
+            <div class="team-badge">${awayName.charAt(0)}</div>
+            <div class="team-name">${awayName}</div>
           </div>
         </div>
         <div class="pick-footer">
