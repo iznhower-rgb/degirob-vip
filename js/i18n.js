@@ -17,9 +17,9 @@ const I18n = {
       const key = el.getAttribute('data-i18n');
       el.textContent = this.t(key);
     });
-    const langBtn = document.getElementById('langBtn');
-    if (langBtn) {
-      langBtn.innerHTML = `<span>${STATE.lang === 'ar' ? 'EN' : 'AR'}</span>`;
-    }
+    // NEW: يدعم كل أزرار اللغة (dashboard + favorites)
+    document.querySelectorAll('.lang-toggle').forEach(btn => {
+      btn.innerHTML = `<span>${STATE.lang === 'ar' ? 'EN' : 'AR'}</span>`;
+    });
   }
 };
