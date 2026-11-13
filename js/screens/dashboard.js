@@ -26,14 +26,48 @@ const Dashboard = {
 
   updateStats() {
     if (!STATE.matches.length) return this.updateStatsEmpty();
-    const avgEV = (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1);
+
+    const avgEV = STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length;
     const avgStars = STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length;
     const accuracy = Math.round((avgStars / 5) * 100);
-    document.getElementById('statPicks').textContent = STATE.matches.length;
-    document.getElementById('statEV').textContent = '+' + avgEV + '%';
+
+    this.animateStat('statPicks', STATE.matches.length, '', '', 0);
+    this.animateStat('statEV', avgEV, '+', '%', 1);
+    this.animateStat('statAccuracy', accuracy, '', '%', 0);
+
     const accEl = document.getElementById('statAccuracy');
-    accEl.textContent = accuracy + '%';
-    accEl.style.color = accuracy >= 65 ? 'var(--pos)' : accuracy >= 50 ? 'var(--vip)' : 'var(--neg)';
+    accEl.style.color = accuracy >= 65 ? 'var(--pos)'
+                      : accuracy >= 50 ? 'var(--vip)'
+                      : 'var(--neg)';
+  },
+
+  animateStat(id, target, prefix, suffix, decimals) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const currentText = el.textContent || '';
+    const currentNum = parseFloat(currentText.replace(/[^0-9.-]/g, ''));
+    const current = isNaN(currentNum) ? 0 : currentNum;
+
+    // إذا كانت القيمة الحالية = الهدف → لا نعيد الأنيميشن
+    if (Math.abs(current - target) < 0.05) {
+      el.textContent = prefix + (decimals > 0 ? target.toFixed(decimals) : Math.round(target)) + suffix;
+      return;
+    }
+
+    const duration = 800;
+    const startTime = performance.now();
+    const startVal = current;
+
+    const tick = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = startVal + (target - startVal) * eased;
+      el.textContent = prefix + (decimals > 0 ? val.toFixed(decimals) : Math.round(val)) + suffix;
+      if (progress < 1) requestAnimationFrame(tick);
+      else el.textContent = prefix + (decimals > 0 ? target.toFixed(decimals) : Math.round(target)) + suffix;
+    };
+    requestAnimationFrame(tick);
   },
 
   updateStatsEmpty() {
