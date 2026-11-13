@@ -37,7 +37,7 @@ const App = {
     if (backBtn) {
       backBtn.addEventListener('click', () => {
         const prev = Navigation.previousScreen || 'dashboard';
-        Navigation.switchTab(prev === 'favorites' ? 'favorites' : 'dashboard');
+        Navigation.switchTab(prev);
       });
     }
 
@@ -55,6 +55,8 @@ const App = {
   toggleLang() {
     I18n.toggle();
     I18n.apply();
+    
+    // تحديث الشاشات المفتوحة
     if (STATE.matches.length) Dashboard.render();
 
     const fav = document.getElementById('favorites');
@@ -64,6 +66,10 @@ const App = {
     if (det && det.classList.contains('active') && STATE.currentMatchId) {
       Detail.open(STATE.currentMatchId);
     }
+
+    // تحديث شاشة كل المباريات عند تغيير اللغة
+    const allScreen = document.getElementById('allMatches');
+    if (allScreen && allScreen.classList.contains('active')) Dashboard.renderAll();
   },
 
   enterApp() {
@@ -91,7 +97,7 @@ const App = {
       STATE.matches = matches;
       STATE.apiStatus = 'live';
       STATE.apiError = null;
-      console.info('[App] ✅ LIVE:', matches.length);
+      console.info('[App] ✅ TOTAL:', matches.length);
       Dashboard.render();
     } catch (err) {
       console.error('[App] ❌', err.code, err.message);
