@@ -1,5 +1,5 @@
 /* Service Worker — DeGirob VIP */
-const CACHE_VERSION = 'v14';
+const CACHE_VERSION = 'v17';
 const CACHE_NAME = `degirob-${CACHE_VERSION}`;
 
 const PRECACHE = [
