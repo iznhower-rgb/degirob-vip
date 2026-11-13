@@ -162,7 +162,6 @@ const API = {
 
   async fetchStandings(leagueId, season) {
     if (!leagueId) return null;
-    // ✅ FIX: إن كانت الخطة غير معروفة (cache hit) أو Free → نستخدم 2024
     const effectiveSeason = (!this._plan || this._isFree) ? 2024 : season;
     const cacheKey = `${leagueId}-${effectiveSeason}`;
 
@@ -272,6 +271,8 @@ const API = {
     const stars = confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3;
     const probDiff = Math.abs(homeProb - awayProb);
 
+    const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+
     return {
       id: String(f.id),
       homeId: t.home.id,
@@ -282,7 +283,14 @@ const API = {
       leagueBadge: this.abbr(l.name),
       home: t.home.name,
       away: t.away.name,
+      homeLogo: t.home.logo || null,
+      awayLogo: t.away.logo || null,
       time,
+      status: f.status.short,
+      statusLong: f.status.long,
+      isLive: liveStatuses.includes(f.status.short),
+      elapsed: f.status.elapsed || null,
+      kickoff: f.timestamp ? f.timestamp * 1000 : null,
       analysis: {
         home: homeProb, draw: drawProb, away: awayProb,
         ev: parseFloat((probDiff / 3 + 1).toFixed(1)),
