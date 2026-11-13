@@ -16,8 +16,11 @@ const TRANSLATIONS_AR = {
   morePicks: 'فرص إضافية',
   noMatches: 'لا توجد مباريات متاحة',
 
-  home: 'الرئيسية',
-  favorites: 'المفضلة',
+home: 'الرئيسية',
+favorites: 'المفضلة',
+allMatchesNav: 'المباريات',       // 👈 جديد
+allMatches: 'كل المباريات',       // 👈 جديد
+allMatchesSub: 'جميع مباريات اليوم', // 👈 جديد
 
   myFavorites: 'مبارياتي المفضلة',
   myFavoritesSub: 'المباريات التي حفظتها',
