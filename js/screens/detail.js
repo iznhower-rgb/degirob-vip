@@ -164,10 +164,6 @@ const Detail = {
     `;
 
     Navigation.showScreen('detail');
-    this.loadRichData(m);
-  },
-
-  async loadRichData(m) {
     this.loadH2H(m, m.id);
     this.loadStandings(m, m.id);
   },
@@ -187,10 +183,10 @@ const Detail = {
 
   async loadStandings(m, expectedId) {
     try {
-      const standings = await API.fetchStandings(m.leagueId, m.season);
+      const result = await API.fetchStandings(m.leagueId, m.season);
       if (STATE.currentMatchId !== expectedId) return;
       const el = document.getElementById('standingsSection');
-      if (el) el.innerHTML = this.renderStandings(standings, m);
+      if (el) el.innerHTML = this.renderStandings(result, m);
     } catch (e) {
       if (STATE.currentMatchId !== expectedId) return;
       const el = document.getElementById('standingsSection');
@@ -263,10 +259,15 @@ const Detail = {
     `;
   },
 
-  renderStandings(standings, m) {
-    if (!standings || !standings.length) {
+  renderStandings(result, m) {
+    if (!result || !result.standings || !result.standings.length) {
       return this.renderSectionError(I18n.t('standings'), I18n.t('noStandings'));
     }
+
+    const standings = result.standings;
+    const seasonLabel = result.isHistorical
+      ? `<span style="color:var(--vip);font-size:9px;margin-inline-start:6px;font-weight:800">(${result.season})</span>`
+      : '';
 
     const homeRank = standings.find(s => s.teamId === m.homeId);
     const awayRank = standings.find(s => s.teamId === m.awayId);
@@ -282,7 +283,7 @@ const Detail = {
             <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
             <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
           </svg>
-          ${I18n.t('standings')}
+          ${I18n.t('standings')} ${seasonLabel}
         </div>
         <div class="standings-header">
           <span>${I18n.t('rank')}</span>
