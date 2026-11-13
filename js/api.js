@@ -271,6 +271,9 @@ const API = {
     const stars = confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3;
     const probDiff = Math.abs(homeProb - awayProb);
 
+    const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+    const statusShort = f.status && f.status.short ? f.status.short : 'NS';
+
     return {
       id: String(f.id),
       homeId: t.home.id,
@@ -284,6 +287,11 @@ const API = {
       homeLogo: t.home.logo || null,
       awayLogo: t.away.logo || null,
       time,
+      status: statusShort,
+      statusLong: (f.status && f.status.long) || '',
+      isLive: liveStatuses.includes(statusShort),
+      elapsed: (f.status && f.status.elapsed) || null,
+      kickoff: f.timestamp ? f.timestamp * 1000 : null,
       analysis: {
         home: homeProb, draw: drawProb, away: awayProb,
         ev: parseFloat((probDiff / 3 + 1).toFixed(1)),
