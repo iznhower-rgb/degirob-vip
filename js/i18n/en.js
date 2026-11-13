@@ -47,7 +47,13 @@ const TRANSLATIONS_EN = {
   fav: 'Favorite',
   fresh: 'Fresh',
   tired: 'Tired',
-
+h2h: 'Head to Head',
+standings: 'Standings',
+noH2H: 'No previous meetings',
+noStandings: 'Standings unavailable for this season',
+rank: '#',
+teamCol: 'Team',
+pts: 'Pts',
   errorLoading: 'Failed to load data',
   errorRetry: 'Check your connection and try again',
   retry: 'Retry'
