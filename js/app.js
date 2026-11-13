@@ -17,17 +17,14 @@ const App = {
   },
 
   bindEvents() {
-    // أزرار اللغة في كل الشاشات
     document.querySelectorAll('.lang-toggle').forEach(btn => {
       btn.addEventListener('click', () => this.toggleLang());
     });
 
-    // التبويبات السفلية
     document.querySelectorAll('.nav-item').forEach(n => {
       n.addEventListener('click', () => Navigation.switchTab(n.dataset.tab));
     });
 
-    // زر الرجوع الذكي
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
       backBtn.addEventListener('click', () => {
@@ -42,13 +39,9 @@ const App = {
     I18n.apply();
     if (STATE.matches.length) Dashboard.render();
 
-    // إعادة رسم المفضلة إذا كانت مفتوحة
     const favScreen = document.getElementById('favorites');
-    if (favScreen && favScreen.classList.contains('active')) {
-      Favorites.render();
-    }
+    if (favScreen && favScreen.classList.contains('active')) Favorites.render();
 
-    // إعادة رسم التفاصيل إذا كانت مفتوحة
     const detailScreen = document.getElementById('detail');
     if (detailScreen.classList.contains('active') && STATE.currentMatchId) {
       Detail.open(STATE.currentMatchId);
@@ -64,8 +57,14 @@ const App = {
   },
 
   async loadMatches() {
-    STATE.matches = DEMO_MATCHES;
-    Dashboard.render();
+    Dashboard.showLoading();
+    try {
+      STATE.matches = await API.fetchMatches();
+      Dashboard.render();
+    } catch (err) {
+      console.error('loadMatches error:', err);
+      Dashboard.showError();
+    }
   }
 };
 
