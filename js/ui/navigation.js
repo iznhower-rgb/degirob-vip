@@ -1,5 +1,12 @@
 const Navigation = {
+  previousScreen: 'dashboard',
+
   showScreen(id) {
+    const current = document.querySelector('.screen.active');
+    // نتذكر الشاشة السابقة (نتجاهل paywall و detail)
+    if (current && current.id !== id && current.id !== 'paywall' && current.id !== 'detail') {
+      this.previousScreen = current.id;
+    }
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const screen = document.getElementById(id);
     if (screen) screen.classList.add('active');
@@ -10,6 +17,7 @@ const Navigation = {
     document.querySelectorAll('.nav-item').forEach(n => {
       n.classList.toggle('active', n.dataset.tab === tab);
     });
+    if (tab === 'favorites') Favorites.render();
     this.showScreen(tab);
   }
 };
