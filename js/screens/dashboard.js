@@ -13,7 +13,6 @@ const Dashboard = {
 
     moreEl.innerHTML = more.map(m => this.renderCard(m, false)).join('');
 
-    // ===== STATS =====
     const avgEV = STATE.matches.length
       ? (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1)
       : '0';
@@ -31,6 +30,35 @@ const Dashboard = {
     accEl.style.color = accuracy >= 65 ? 'var(--pos)'
                       : accuracy >= 50 ? 'var(--vip)'
                       : 'var(--neg)';
+  },
+
+  showLoading() {
+    const skeleton = `
+      <div class="skeleton-card">
+        <div class="skeleton skeleton-line" style="width:40%"></div>
+        <div class="skeleton skeleton-line" style="width:80%;height:20px;margin-top:14px"></div>
+        <div class="skeleton skeleton-line" style="width:60%;height:20px;margin-top:10px"></div>
+        <div class="skeleton skeleton-line" style="width:100%;height:1px;margin-top:20px"></div>
+      </div>
+    `;
+    const g = document.getElementById('goldenPicks');
+    const m = document.getElementById('morePicks');
+    if (g) g.innerHTML = skeleton + skeleton + skeleton;
+    if (m) m.innerHTML = '';
+  },
+
+  showError() {
+    const html = `
+      <div class="empty-state">
+        <div class="empty-state-title">⚠️ ${I18n.t('errorLoading')}</div>
+        <div class="empty-state-sub">${I18n.t('errorRetry')}</div>
+        <button class="retry-btn" onclick="App.loadMatches()">${I18n.t('retry')}</button>
+      </div>
+    `;
+    const g = document.getElementById('goldenPicks');
+    const m = document.getElementById('morePicks');
+    if (g) g.innerHTML = html;
+    if (m) m.innerHTML = '';
   },
 
   renderCard(m, isGolden) {
