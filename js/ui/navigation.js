@@ -3,7 +3,6 @@ const Navigation = {
 
   showScreen(id) {
     const current = document.querySelector('.screen.active');
-    // نتذكر الشاشة السابقة (نتجاهل paywall و detail)
     if (current && current.id !== id && current.id !== 'paywall' && current.id !== 'detail') {
       this.previousScreen = current.id;
     }
@@ -18,6 +17,7 @@ const Navigation = {
       n.classList.toggle('active', n.dataset.tab === tab);
     });
     if (tab === 'favorites') Favorites.render();
-    this.showScreen(tab);
+    if (tab === 'all') Dashboard.renderAll();
+    this.showScreen(tab === 'all' ? 'allMatches' : tab);
   }
 };
