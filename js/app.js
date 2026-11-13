@@ -1,20 +1,18 @@
 const App = {
   init() {
-    console.info('[App] Initializing...');
+    console.info('[App] Init...');
     try {
       STATE.lang = Storage.getLang();
       I18n.setLang(STATE.lang);
       STATE.favorites = Storage.getFavorites();
+      STATE.apiStatus = 'loading';
+      STATE.apiError = null;
       this.bindEvents();
 
       const license = Storage.getLicense();
-      console.info('[App] License:', license || 'none');
-
       if (license && CONFIG.VALID_KEYS.includes(license)) {
-        console.info('[App] Valid license — entering app');
         this.enterApp();
       } else {
-        console.info('[App] Showing paywall');
         I18n.apply();
         document.getElementById('paywall').classList.remove('hidden');
         Navigation.showScreen('paywall');
@@ -42,6 +40,16 @@ const App = {
         Navigation.switchTab(prev === 'favorites' ? 'favorites' : 'dashboard');
       });
     }
+
+    const logo = document.querySelector('#dashboard .logo');
+    if (logo) {
+      let timer;
+      logo.addEventListener('touchstart', () => {
+        timer = setTimeout(() => { if (window.eruda) eruda.show(); }, 1500);
+      });
+      logo.addEventListener('touchend', () => clearTimeout(timer));
+      logo.addEventListener('touchcancel', () => clearTimeout(timer));
+    }
   },
 
   toggleLang() {
@@ -49,17 +57,16 @@ const App = {
     I18n.apply();
     if (STATE.matches.length) Dashboard.render();
 
-    const favScreen = document.getElementById('favorites');
-    if (favScreen && favScreen.classList.contains('active')) Favorites.render();
+    const fav = document.getElementById('favorites');
+    if (fav && fav.classList.contains('active')) Favorites.render();
 
-    const detailScreen = document.getElementById('detail');
-    if (detailScreen && detailScreen.classList.contains('active') && STATE.currentMatchId) {
+    const det = document.getElementById('detail');
+    if (det && det.classList.contains('active') && STATE.currentMatchId) {
       Detail.open(STATE.currentMatchId);
     }
   },
 
   enterApp() {
-    console.info('[App] enterApp');
     try {
       document.getElementById('paywall').classList.add('hidden');
       const nav = document.getElementById('bottomNav');
@@ -68,28 +75,33 @@ const App = {
       I18n.apply();
       this.loadMatches();
     } catch (err) {
-      console.error('[App] enterApp error:', err);
-      const dash = document.getElementById('dashboard');
-      if (dash) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        dash.classList.add('active');
-      }
+      console.error('[App] enterApp:', err);
     }
   },
 
   async loadMatches() {
-    console.info('[App] Loading matches...');
+    console.info('[App] loadMatches...');
+    STATE.apiStatus = 'loading';
+    STATE.matches = [];
     Dashboard.showLoading();
+    Dashboard.renderStatusBadge();
+
     try {
       const matches = await API.fetchMatches();
       STATE.matches = matches;
-      STATE.usingDemo = (matches === DEMO_MATCHES);
-      console.info('[App] Loaded:', matches.length, '| demo:', STATE.usingDemo);
+      STATE.apiStatus = 'live';
+      STATE.apiError = null;
+      console.info('[App] ✅ LIVE:', matches.length);
       Dashboard.render();
     } catch (err) {
-      console.error('[App] Load failed:', err);
-      STATE.matches = DEMO_MATCHES;
-      STATE.usingDemo = true;
+      console.error('[App] ❌', err.code, err.message);
+      STATE.matches = [];
+      STATE.apiStatus = 'error';
+      STATE.apiError = {
+        code: err.code || 'UNKNOWN',
+        message: err.message || 'Unknown error',
+        detail: err.detail || ''
+      };
       Dashboard.render();
     }
   }
