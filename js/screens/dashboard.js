@@ -49,7 +49,6 @@ const Dashboard = {
     const currentNum = parseFloat(currentText.replace(/[^0-9.-]/g, ''));
     const current = isNaN(currentNum) ? 0 : currentNum;
 
-    // إذا كانت القيمة الحالية = الهدف → لا نعيد الأنيميشن
     if (Math.abs(current - target) < 0.05) {
       el.textContent = prefix + (decimals > 0 ? target.toFixed(decimals) : Math.round(target)) + suffix;
       return;
@@ -159,6 +158,14 @@ const Dashboard = {
     return `<div class="team-badge has-logo"><span class="team-letter">${letter}</span><img src="${safeUrl}" class="team-logo" alt="" onerror="this.parentNode.classList.remove('has-logo')"></div>`;
   },
 
+  renderHeaderRight(m) {
+    if (m.isLive) {
+      const minute = m.elapsed ? ' ' + m.elapsed + "'" : '';
+      return `<span class="live-pulse"><span class="live-dot"></span>LIVE${minute}</span>`;
+    }
+    return `<div class="time-tag">${m.time}</div>`;
+  },
+
   renderCard(m, isGolden) {
     const a = m.analysis;
     const marketClass = a.market === 'clean' ? 'trap-clean' : a.market === 'trap' ? 'trap-trap' : 'trap-caution';
@@ -174,7 +181,7 @@ const Dashboard = {
             <span class="league-badge">${m.leagueBadge}</span>
             <span>${m.league}</span>
           </div>
-          <div class="time-tag">${m.time}</div>
+          ${this.renderHeaderRight(m)}
         </div>
         <div class="pick-teams">
           <div class="team-row">
