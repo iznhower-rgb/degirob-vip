@@ -20,6 +20,14 @@ const TRANSLATIONS_EN = {
 
   // Nav
   home: 'Home',
+  favorites: 'Favorites',
+
+  // Favorites
+  myFavorites: 'My Favorites',
+  myFavoritesSub: 'Your saved matches',
+  matchesSaved: 'matches saved',
+  noFavorites: 'No favorites yet',
+  noFavoritesSub: 'Tap the star ⭐ on any analysis to save it here',
 
   // Detail
   matchAnalysis: 'Match Analysis',
