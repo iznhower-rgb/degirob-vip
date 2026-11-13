@@ -26,6 +26,9 @@ const API = {
       if (status.isNetworkError) {
         throw new APIError('NETWORK_ERROR', 'تعذر الاتصال بالخادم. تحقق من الإنترنت.');
       }
+      if (status.isRateLimit) {
+        throw new APIError('RATE_LIMIT', 'لقد تجاوزت الحد اليومي للطلبات (100 طلب). يرجى المحاولة غداً.');
+      }
       throw new APIError('KEY_INVALID', status.message);
     }
     console.info('[API] ✅ Key:', status.message);
@@ -47,13 +50,19 @@ const API = {
         headers: { 'x-apisports-key': CONFIG.API.FOOTBALL_KEY }
       });
       if (!res.ok) {
-        if (res.status >= 500) return { ok: false, message: `HTTP ${res.status}`, isNetworkError: true };
+        if (res.status === 429) return { ok: false, isRateLimit: true, message: 'HTTP 429' };
+        if (res.status >= 500) return { ok: false, isNetworkError: true, message: `HTTP ${res.status}` };
         return { ok: false, message: `HTTP ${res.status}` };
       }
       const json = await res.json();
+      
       if (json.errors && Object.keys(json.errors).length) {
+        if (json.errors.requests) {
+          return { ok: false, isRateLimit: true, message: json.errors.requests };
+        }
         return { ok: false, message: JSON.stringify(json.errors) };
       }
+      
       const r = json.response || {};
       const sub = r.subscription || {};
       const req = r.requests || {};
@@ -62,7 +71,6 @@ const API = {
       console.info('[API] Plan:', this._plan, '| Free:', this._isFree);
       return { ok: true, message: `Plan: ${this._plan} | ${req.current || 0}/${req.limit_day || 100}` };
     } catch (e) {
-      // هذا هو الخطأ الذي حدث معك (فشل الشبكة)
       return { ok: false, message: 'Network: ' + e.message, isNetworkError: true };
     }
   },
@@ -88,13 +96,22 @@ const API = {
         const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
         const res = await fetch(url, { headers, signal: controller.signal });
         clearTimeout(t);
-        if (!res.ok) { console.warn(`[API] HTTP ${res.status}`); continue; }
+        
+        if (!res.ok) { 
+          if (res.status === 429) throw new Error('Rate Limit Reached');
+          console.warn(`[API] HTTP ${res.status}`); 
+          continue; 
+        }
+        
         const json = await res.json();
+        
         if (json.errors && Object.keys(json.errors).length) {
+          if (json.errors.requests) throw new Error('Rate Limit Reached');
           console.warn('[API] errors:', json.errors);
           lastError = JSON.stringify(json.errors);
           continue;
         }
+        
         const fixtures = json.response || [];
         console.info(`[API] ${fixtures.length} from ${url.split('?')[1]}`);
         for (const item of fixtures) {
