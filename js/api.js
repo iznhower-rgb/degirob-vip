@@ -281,6 +281,8 @@ const API = {
       leagueBadge: this.abbr(l.name),
       home: t.home.name,
       away: t.away.name,
+      homeLogo: t.home.logo || null,
+      awayLogo: t.away.logo || null,
       time,
       analysis: {
         home: homeProb, draw: drawProb, away: awayProb,
