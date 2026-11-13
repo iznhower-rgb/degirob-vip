@@ -116,6 +116,15 @@ const Dashboard = {
     if (m) m.innerHTML = '';
   },
 
+  renderBadge(name, logoUrl) {
+    const letter = Helpers.escapeHtml(name.charAt(0));
+    if (!logoUrl) {
+      return `<div class="team-badge"><span class="team-letter">${letter}</span></div>`;
+    }
+    const safeUrl = Helpers.escapeHtml(logoUrl);
+    return `<div class="team-badge has-logo"><span class="team-letter">${letter}</span><img src="${safeUrl}" class="team-logo" alt="" onerror="this.parentNode.classList.remove('has-logo')"></div>`;
+  },
+
   renderCard(m, isGolden) {
     const a = m.analysis;
     const marketClass = a.market === 'clean' ? 'trap-clean' : a.market === 'trap' ? 'trap-trap' : 'trap-caution';
@@ -135,11 +144,11 @@ const Dashboard = {
         </div>
         <div class="pick-teams">
           <div class="team-row">
-            <div class="team-badge">${homeName.charAt(0)}</div>
+            ${this.renderBadge(homeName, m.homeLogo)}
             <div class="team-name">${homeName}</div>
           </div>
           <div class="team-row">
-            <div class="team-badge">${awayName.charAt(0)}</div>
+            ${this.renderBadge(awayName, m.awayLogo)}
             <div class="team-name">${awayName}</div>
           </div>
         </div>
