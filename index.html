@@ -59,7 +59,7 @@
     <header>
       <div class="logo"><span class="logo-dot"></span>DeGirob VIP</div>
       <div class="header-actions">
-        <button class="icon-btn" id="langBtn"><span>EN</span></button>
+        <button class="icon-btn lang-toggle" id="langBtn"><span>EN</span></button>
       </div>
     </header>
     <main>
@@ -99,6 +99,21 @@
     </main>
   </div>
 
+  <!-- ========== FAVORITES ========== -->
+  <div id="favorites" class="screen">
+    <header>
+      <div class="logo"><span class="logo-dot"></span>DeGirob VIP</div>
+      <div class="header-actions">
+        <button class="icon-btn lang-toggle"><span>EN</span></button>
+      </div>
+    </header>
+    <main>
+      <h1 class="greeting" data-i18n="myFavorites">My Favorites</h1>
+      <p class="greeting-sub" data-i18n="myFavoritesSub">Your saved matches</p>
+      <div id="favoritesList"></div>
+    </main>
+  </div>
+
   <!-- ========== DETAIL ========== -->
   <div id="detail" class="screen">
     <div class="detail-header">
@@ -120,6 +135,12 @@
       </svg>
       <span data-i18n="home">Home</span>
     </div>
+    <div class="nav-item" data-tab="favorites">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      <span data-i18n="favorites">Favorites</span>
+    </div>
   </nav>
 
   <!-- ========== SCRIPTS (الترتيب حرج!) ========== -->
@@ -136,6 +157,7 @@
   <script src="js/screens/paywall.js"></script>
   <script src="js/screens/dashboard.js"></script>
   <script src="js/screens/detail.js"></script>
+  <script src="js/screens/favorites.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
