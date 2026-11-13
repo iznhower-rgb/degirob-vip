@@ -45,16 +45,35 @@ const Detail = {
         </div>
       </div>`;
 
+    const homeBadge = m.homeLogo
+      ? `<div class="hero-team-badge has-logo"><img src="${m.homeLogo}" class="hero-team-logo" alt="" loading="lazy" onerror="this.parentNode.classList.remove('has-logo');this.parentNode.textContent='${homeName.charAt(0)}';this.remove()"></div>`
+      : `<div class="hero-team-badge">${homeName.charAt(0)}</div>`;
+
+    const awayBadge = m.awayLogo
+      ? `<div class="hero-team-badge has-logo"><img src="${m.awayLogo}" class="hero-team-logo" alt="" loading="lazy" onerror="this.parentNode.classList.remove('has-logo');this.parentNode.textContent='${awayName.charAt(0)}';this.remove()"></div>`
+      : `<div class="hero-team-badge">${awayName.charAt(0)}</div>`;
+
+    const best = a.bestBet;
+    const bestPct = best === 'home' ? a.home : best === 'away' ? a.away : a.draw;
+    const bestColor = best === 'home' ? 'var(--pos)' : best === 'away' ? 'var(--neg)' : 'var(--vip)';
+    const bestLabel = best === 'home' ? I18n.t('homeWin') : best === 'away' ? I18n.t('awayWin') : I18n.t('draw');
+
+    const donutGradient = `conic-gradient(
+      var(--pos) 0% ${a.home}%,
+      var(--vip) ${a.home}% ${a.home + a.draw}%,
+      var(--neg) ${a.home + a.draw}% 100%
+    )`;
+
     document.getElementById('detailContent').innerHTML = `
       <div class="hero-card">
         <div class="hero-teams">
           <div class="hero-team">
-            <div class="hero-team-badge">${homeName.charAt(0)}</div>
+            ${homeBadge}
             <div class="hero-team-name">${homeName}</div>
           </div>
           <div class="hero-vs">VS</div>
           <div class="hero-team">
-            <div class="hero-team-badge">${awayName.charAt(0)}</div>
+            ${awayBadge}
             <div class="hero-team-name">${awayName}</div>
           </div>
         </div>
@@ -64,23 +83,29 @@ const Detail = {
       ${marketBadge}
 
       <div class="prob-section">
-        <div class="prob-bar">
-          <div class="prob-home-bar" style="width:${a.home}%"></div>
-          <div class="prob-draw-bar" style="width:${a.draw}%"></div>
-          <div class="prob-away-bar" style="width:${a.away}%"></div>
+        <div class="donut-wrapper">
+          <div class="donut-chart" style="background: ${donutGradient}">
+            <div class="donut-inner">
+              <div class="donut-value" style="color: ${bestColor}">${bestPct}%</div>
+              <div class="donut-label">${bestLabel}</div>
+            </div>
+          </div>
         </div>
-        <div class="prob-labels">
-          <div class="prob-label-item">
-            <div class="name">${I18n.t('homeWin')}</div>
-            <div class="val">${a.home}%</div>
+        <div class="donut-legend">
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot" style="background: var(--pos)"></div>
+            <div class="donut-legend-name">${I18n.t('homeWin')}</div>
+            <div class="donut-legend-val" style="color: var(--pos)">${a.home}%</div>
           </div>
-          <div class="prob-label-item">
-            <div class="name">${I18n.t('draw')}</div>
-            <div class="val">${a.draw}%</div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot" style="background: var(--vip)"></div>
+            <div class="donut-legend-name">${I18n.t('draw')}</div>
+            <div class="donut-legend-val" style="color: var(--vip)">${a.draw}%</div>
           </div>
-          <div class="prob-label-item">
-            <div class="name">${I18n.t('awayWin')}</div>
-            <div class="val">${a.away}%</div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot" style="background: var(--neg)"></div>
+            <div class="donut-legend-name">${I18n.t('awayWin')}</div>
+            <div class="donut-legend-val" style="color: var(--neg)">${a.away}%</div>
           </div>
         </div>
       </div>
