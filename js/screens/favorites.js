@@ -5,9 +5,10 @@ const Favorites = {
 
     const favMatches = STATE.matches.filter(m => STATE.favorites.includes(m.id));
 
-    // تحديث العنوان الفرعي بعدد المفضلة
+    // العنوان الفرعي: نزيل data-i18n حتى لا يُعاد كتابته من I18n.apply
     const subEl = document.querySelector('#favorites .greeting-sub');
     if (subEl) {
+      subEl.removeAttribute('data-i18n');
       subEl.textContent = favMatches.length
         ? `${favMatches.length} ${I18n.t('matchesSaved')}`
         : I18n.t('myFavoritesSub');
