@@ -11,7 +11,6 @@ const Navigation = {
     const screen = document.getElementById(id);
     if (screen) screen.classList.add('active');
     
-    // إخفاء شارة الحالة (LIVE) عند الانتقال لشاشة التفاصيل
     const badge = document.getElementById('statusBadge');
     if (badge) {
       badge.style.display = (id === 'detail') ? 'none' : 'block';
@@ -28,7 +27,6 @@ const Navigation = {
     if (tab === 'favorites') Favorites.render();
     if (tab === 'all') Dashboard.renderAll();
     
-    // العودة للرئيسية أو المباريات يظهر الشارة مرة أخرى
     const targetScreen = tab === 'all' ? 'allMatches' : tab;
     this.showScreen(targetScreen);
   }
