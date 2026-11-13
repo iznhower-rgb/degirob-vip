@@ -1,5 +1,4 @@
 const TRANSLATIONS_EN = {
-  // Paywall
   paywallSub: 'Elite Tactical Intelligence',
   feat1: '8 Golden Picks Daily',
   feat2: 'AI + Market Analysis',
@@ -8,7 +7,6 @@ const TRANSLATIONS_EN = {
   unlockBtn: 'UNLOCK ACCESS',
   invalidKey: 'Invalid key',
 
-  // Dashboard
   greeting: 'Welcome, Elite Member',
   greetingSub: 'Your daily intelligence briefing',
   picks: 'Picks',
@@ -18,18 +16,15 @@ const TRANSLATIONS_EN = {
   morePicks: 'More Opportunities',
   noMatches: 'No matches available',
 
-  // Nav
   home: 'Home',
   favorites: 'Favorites',
 
-  // Favorites
   myFavorites: 'My Favorites',
   myFavoritesSub: 'Your saved matches',
   matchesSaved: 'matches saved',
   noFavorites: 'No favorites yet',
   noFavoritesSub: 'Tap the star ⭐ on any analysis to save it here',
 
-  // Detail
   matchAnalysis: 'Match Analysis',
   probability: 'Probabilities',
   homeWin: 'Home',
@@ -51,5 +46,9 @@ const TRANSLATIONS_EN = {
   trap: 'TRAP',
   fav: 'Favorite',
   fresh: 'Fresh',
-  tired: 'Tired'
+  tired: 'Tired',
+
+  errorLoading: 'Failed to load data',
+  errorRetry: 'Check your connection and try again',
+  retry: 'Retry'
 };
