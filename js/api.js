@@ -16,12 +16,12 @@ const API = {
 
     try {
       const raw = await this.callESPN();
-      if (!raw.length) throw new APIError('NO_MATCHES', '0 مباريات في دورياتك اليوم');
+      if (!raw.length) throw new APIError('NO_MATCHES', '0 مباريات اليوم في جميع الدوريات');
 
       const matches = raw.map(i => this.normalizeMatch(i)).filter(Boolean);
       if (!matches.length) throw new APIError('NORMALIZE_FAILED', 'فشل التحويل');
 
-      console.info('[API] ✅ LIVE:', matches.length);
+      console.info('[API] ✅ TOTAL:', matches.length);
       this.setCache(matches);
       return matches;
     } catch (err) {
@@ -32,26 +32,33 @@ const API = {
 
   async callESPN() {
     const all = [];
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const seen = new Set();
+    const dates = this._getDateRange();
 
-    for (const league of CONFIG.API.ESPN_LEAGUES) {
+    for (const date of dates) {
+      if (all.length >= 200) break;
+
+      console.info(`[API] Fetching ALL matches for ${date}...`);
       try {
-        const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${today}`;
+        const url = `${CONFIG.API.ESPN_BASE}/all/scoreboard?dates=${date}&limit=1000`;
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(t);
 
         if (!res.ok) {
-          console.warn(`[API] ESPN ${league.slug}: HTTP ${res.status}`);
+          console.warn(`[API] ${date}: HTTP ${res.status}`);
           continue;
         }
 
         const json = await res.json();
         const events = json.events || [];
-        console.info(`[API] ESPN ${league.slug}: ${events.length} events`);
+        console.info(`[API] ${date}: ${events.length} raw events`);
 
         for (const ev of events) {
+          if (seen.has(ev.id)) continue;
+          seen.add(ev.id);
+
           const comp = ev.competitions && ev.competitions[0];
           if (!comp || !comp.competitors) continue;
 
@@ -60,9 +67,9 @@ const API = {
           if (!home || !away) continue;
 
           const statusState = ev.status?.type?.state || 'pre';
-          if (statusState === 'post') continue;
-
           const isLive = statusState === 'in';
+          const isPost = statusState === 'post';
+
           const elapsed = isLive && ev.status?.displayClock
             ? parseInt(ev.status.displayClock.replace("'", ''), 10)
             : null;
@@ -70,11 +77,22 @@ const API = {
           const dateObj = new Date(ev.date);
           const time = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
+          // استخراج الدوري
+          let leagueName = 'Football';
+          let leagueSlug = 'all';
+          const teamLeague = comp.competitors[0].team?.league;
+          if (teamLeague) {
+            leagueName = teamLeague.name || 'Football';
+            leagueSlug = teamLeague.slug || 'all';
+          } else if (ev.season) {
+            leagueName = ev.season.name || 'Football';
+          }
+
           all.push({
             id: String(ev.id),
-            leagueSlug: league.slug,
-            league: league.name,
-            leagueBadge: league.badge,
+            leagueSlug,
+            league: leagueName,
+            leagueBadge: this._abbr(leagueName),
             home: home.team.displayName || home.team.name,
             away: away.team.displayName || away.team.name,
             homeId: home.team.id,
@@ -83,18 +101,48 @@ const API = {
             awayLogo: away.team.logo || null,
             time,
             isLive,
+            isPost,
             elapsed,
             kickoff: dateObj.getTime(),
-            statusShort: ev.status?.type?.shortDetail || 'NS',
-            competitionName: ev.name || ''
+            statusShort: ev.status?.type?.shortDetail || (isPost ? 'FT' : 'NS')
           });
         }
       } catch (e) {
-        console.warn(`[API] ESPN ${league.slug} failed:`, e.message);
+        console.warn(`[API] ${date} failed:`, e.message);
       }
+
+      if (all.length >= 20) break;
     }
 
+    // ترتيب: المباشرة أولاً، ثم القادمة، ثم المنتهية
+    all.sort((a, b) => {
+      if (a.isLive && !b.isLive) return -1;
+      if (!a.isLive && b.isLive) return 1;
+      if (!a.isPost && b.isPost) return -1;
+      if (a.isPost && !b.isPost) return 1;
+      return a.kickoff - b.kickoff;
+    });
+
     return all;
+  },
+
+  _getDateRange() {
+    const fmt = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}${m}${day}`;
+    };
+    return [
+      fmt(new Date()),
+      fmt(new Date(Date.now() + 86400000)),
+      fmt(new Date(Date.now() - 86400000))
+    ];
+  },
+
+  _abbr(name) {
+    if (!name) return 'FB';
+    return name.split(' ').map(w => w[0] || '').join('').substring(0, 3).toUpperCase();
   },
 
   normalizeMatch(ev) {
@@ -120,6 +168,7 @@ const API = {
       awayLogo: ev.awayLogo,
       time: ev.time,
       isLive: ev.isLive,
+      isPost: ev.isPost,
       elapsed: ev.elapsed,
       kickoff: ev.kickoff,
       statusShort: ev.statusShort,
@@ -144,10 +193,7 @@ const API = {
   async fetchH2H(homeName, awayName) {
     const cacheKey = `${homeName}-${awayName}`;
     const cached = this._getCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, CONFIG.API.CACHE_H2H_MINUTES);
-    if (cached !== null) {
-      console.info('[API] H2H from cache');
-      return cached;
-    }
+    if (cached !== null) return cached;
 
     try {
       const homeId = await this._searchTeamId(homeName);
@@ -160,11 +206,9 @@ const API = {
       combined.sort((a, b) => new Date(b.date) - new Date(a.date));
       const result = combined.slice(0, 5);
 
-      console.info('[API] H2H loaded:', result.length);
       this._setCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, result, 30);
       return result;
     } catch (e) {
-      console.warn('[API] H2H failed:', e.message);
       return [];
     }
   },
@@ -178,9 +222,7 @@ const API = {
       const teams = json.teams;
       if (!teams || !teams.length) return null;
       return teams[0].idTeam;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   },
 
   async _fetchTeamLast(teamId) {
@@ -197,9 +239,7 @@ const API = {
         homeGoals: parseInt(r.intHomeScore, 10),
         awayGoals: parseInt(r.intAwayScore, 10)
       }));
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   },
 
   async fetchStandings(leagueSlug) {
@@ -208,10 +248,7 @@ const API = {
 
     const cacheKey = `${leagueSlug}-${CONFIG.API.TSDB_SEASON}`;
     const cached = this._getCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, CONFIG.API.CACHE_STANDINGS_MINUTES);
-    if (cached !== null) {
-      console.info('[API] Standings from cache');
-      return cached;
-    }
+    if (cached !== null) return cached;
 
     try {
       const url = `${CONFIG.API.TSDB_BASE}/lookuptable.php?l=${leagueId}&s=${CONFIG.API.TSDB_SEASON}`;
@@ -232,11 +269,9 @@ const API = {
       }));
 
       const result = { standings, season: CONFIG.API.TSDB_SEASON };
-      console.info('[API] Standings loaded:', standings.length);
       this._setCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, result, 10);
       return result;
     } catch (e) {
-      console.warn('[API] Standings failed:', e.message);
       return null;
     }
   },
@@ -264,7 +299,7 @@ const API = {
         for (let i = maxEntries; i < keys.length; i++) delete data[keys[i]];
       }
       localStorage.setItem(storageKey, JSON.stringify(data));
-    } catch (e) { console.warn('[API] cache write:', e); }
+    } catch (e) { }
   },
 
   getCache() {
@@ -283,7 +318,7 @@ const API = {
       localStorage.setItem(CONFIG.STORAGE_KEYS.MATCHES_CACHE, JSON.stringify({
         matches, timestamp: Date.now()
       }));
-    } catch (e) { console.warn('[API] Cache write:', e); }
+    } catch (e) { }
   },
 
   clearCache() {
