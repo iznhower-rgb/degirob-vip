@@ -118,7 +118,6 @@ const API = {
     }
 
     try {
-      // ✅ بدون last=5 (ميزة مدفوعة) — نقلّص على العميل
       const url = `${CONFIG.API.FOOTBALL_BASE}/fixtures/headtohead?h2h=${homeId}-${awayId}`;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
@@ -139,7 +138,6 @@ const API = {
         return s === 'FT' || s === 'AET' || s === 'PEN';
       });
 
-      // ✅ ترتيب تنازلي + اقتصاص أول 5
       const result = fixtures
         .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
         .slice(0, 5)
@@ -164,8 +162,8 @@ const API = {
 
   async fetchStandings(leagueId, season) {
     if (!leagueId) return null;
-    // ✅ على Free: 2024 تلقائياً (الخطة المجانية لا تدعم الموسم الحالي)
-    const effectiveSeason = this._isFree ? 2024 : season;
+    // ✅ FIX: إن كانت الخطة غير معروفة (cache hit) أو Free → نستخدم 2024
+    const effectiveSeason = (!this._plan || this._isFree) ? 2024 : season;
     const cacheKey = `${leagueId}-${effectiveSeason}`;
 
     const cached = this._getCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, CONFIG.API.CACHE_STANDINGS_MINUTES);
@@ -205,7 +203,7 @@ const API = {
       const result = {
         standings,
         season: effectiveSeason,
-        isHistorical: this._isFree && effectiveSeason !== season
+        isHistorical: effectiveSeason !== season
       };
 
       console.info('[API] Standings loaded:', standings.length, '| season:', effectiveSeason);
