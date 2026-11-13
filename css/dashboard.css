@@ -23,19 +23,52 @@
 .pick-card:active { transform: scale(0.98); }
 .pick-card:hover { border-color: rgba(255,255,255,0.22); }
 
+/* ========== GOLDEN CARD + AURORA BORDER ========== */
 .pick-card.golden {
-  border-color: rgba(245,158,11,0.4);
+  border-color: transparent;
   background: linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(255,255,255,0.03) 100%);
   box-shadow:
     0 12px 40px rgba(245,158,11,0.18),
-    0 0 0 1px rgba(245,158,11,0.15) inset,
     0 1px 0 rgba(252,211,77,0.3) inset;
 }
+
+/* إطار Aurora متحرك */
 .pick-card.golden::before {
-  background: linear-gradient(90deg, transparent, var(--vip-light), transparent);
-  height: 2px;
-  box-shadow: 0 0 12px var(--vip-light);
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    #8B5CF6 0%,
+    #22D3EE 25%,
+    #FCD34D 50%,
+    #22D3EE 75%,
+    #8B5CF6 100%
+  );
+  background-size: 300% 300%;
+  animation: auroraBorder 8s linear infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  will-change: background-position;
 }
+
+@keyframes auroraBorder {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* التوهج الذهبي الخلفي — يبقى كما هو */
 .pick-card.golden::after {
   content: '';
   position: absolute;
@@ -46,6 +79,16 @@
   filter: blur(40px);
 }
 
+/* احترام تفضيل تقليل الحركة */
+@media (prefers-reduced-motion: reduce) {
+  .pick-card.golden::before {
+    animation: none;
+    background: linear-gradient(135deg, #8B5CF6, #22D3EE, #FCD34D);
+    background-size: 100% 100%;
+  }
+}
+
+/* ========== PICK HEADER ========== */
 .pick-header {
   display: flex;
   justify-content: space-between;
@@ -89,6 +132,7 @@
   letter-spacing: 0.5px;
 }
 
+/* ========== TEAMS ========== */
 .pick-teams {
   display: flex;
   flex-direction: column;
@@ -158,6 +202,7 @@
   letter-spacing: -0.2px;
 }
 
+/* ========== FOOTER ========== */
 .pick-footer {
   display: flex;
   justify-content: space-between;
@@ -234,6 +279,7 @@
   box-shadow: 0 0 12px rgba(245,158,11,0.15);
 }
 
+/* ========== EMPTY STATE ========== */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
