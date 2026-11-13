@@ -28,6 +28,38 @@ const Helpers = {
     return div.innerHTML;
   },
 
+  animateValue(el, start, end, duration, prefix, suffix, decimals) {
+    if (!el) return;
+    const startTime = performance.now();
+    const diff = end - start;
+    const d = decimals || 0;
+    const p = prefix || '';
+    const s = suffix || '';
+    function tick(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = start + diff * eased;
+      el.textContent = p + (d > 0 ? current.toFixed(d) : Math.round(current)) + s;
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  },
+
+  formatCountdown(kickoff) {
+    if (!kickoff) return null;
+    const diff = kickoff - Date.now();
+    if (diff <= 0) return null;
+    const day = Math.floor(diff / 86400000);
+    const hour = Math.floor((diff % 86400000) / 3600000);
+    const min = Math.floor((diff % 3600000) / 60000);
+    const ar = STATE.lang === 'ar';
+    if (day > 0) return ar ? `بعد ${day}ي ${hour}س` : `in ${day}d ${hour}h`;
+    if (hour > 0) return ar ? `بعد ${hour}س ${min}د` : `in ${hour}h ${min}m`;
+    if (min > 0) return ar ? `بعد ${min}د` : `in ${min}m`;
+    return ar ? 'قريباً' : 'soon';
+  },
+
   translateWeather(desc) {
     const map = { 'Clear': 'صافٍ', 'Rain': 'ممطر', 'Windy': 'رياح', 'Cloudy': 'غائم' };
     if (STATE.lang === 'ar') {
