@@ -13,12 +13,24 @@ const Dashboard = {
 
     moreEl.innerHTML = more.map(m => this.renderCard(m, false)).join('');
 
-    // Update stats
+    // ===== STATS =====
     const avgEV = STATE.matches.length
       ? (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1)
       : '0';
+
+    const avgStars = STATE.matches.length
+      ? STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length
+      : 0;
+    const accuracy = Math.round((avgStars / 5) * 100);
+
     document.getElementById('statPicks').textContent = STATE.matches.length;
     document.getElementById('statEV').textContent = '+' + avgEV + '%';
+
+    const accEl = document.getElementById('statAccuracy');
+    accEl.textContent = accuracy + '%';
+    accEl.style.color = accuracy >= 65 ? 'var(--pos)'
+                      : accuracy >= 50 ? 'var(--vip)'
+                      : 'var(--neg)';
   },
 
   renderCard(m, isGolden) {
