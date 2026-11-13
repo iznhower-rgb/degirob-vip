@@ -16,7 +16,7 @@ const CONFIG = {
 
   API: {
     FOOTBALL_BASE: 'https://v3.football.api-sports.io',
-    FOOTBALL_KEY: '',          // ← ضع مفتاحك هنا (api-football.com)
+    FOOTBALL_KEY: '30382d0168e91297cbd2d35849103ec0',
     LEAGUES: [39, 140, 135, 78, 61],
     SEASON: 2025,
     CACHE_MINUTES: 15,
