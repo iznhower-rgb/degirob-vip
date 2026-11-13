@@ -45,7 +45,6 @@ const Detail = {
         </div>
       </div>`;
 
-    // إعداد ألوان دائرة الاحتمالات
     const best = a.bestBet;
     const bestPct = best === 'home' ? a.home : best === 'away' ? a.away : a.draw;
     const bestColor = best === 'home' ? 'var(--pos)' : best === 'away' ? 'var(--neg)' : 'var(--vip)';
@@ -197,7 +196,7 @@ const Detail = {
 
   async loadH2H(m, expectedId) {
     try {
-      const h2h = await API.fetchH2H(m.homeId, m.awayId);
+      const h2h = await API.fetchH2H(m.home, m.away);
       if (STATE.currentMatchId !== expectedId) return;
       const el = document.getElementById('h2hSection');
       if (el) el.innerHTML = this.renderH2H(h2h, m);
@@ -210,7 +209,7 @@ const Detail = {
 
   async loadStandings(m, expectedId) {
     try {
-      const result = await API.fetchStandings(m.leagueId, m.season);
+      const result = await API.fetchStandings(m.leagueId);
       if (STATE.currentMatchId !== expectedId) return;
       const el = document.getElementById('standingsSection');
       if (el) el.innerHTML = this.renderStandings(result, m);
@@ -292,16 +291,7 @@ const Detail = {
     }
 
     const standings = result.standings;
-    const seasonLabel = result.isHistorical
-      ? `<span style="color:var(--vip);font-size:9px;margin-inline-start:6px;font-weight:800">(${result.season})</span>`
-      : '';
-
-    const homeRank = standings.find(s => s.teamId === m.homeId);
-    const awayRank = standings.find(s => s.teamId === m.awayId);
-
     const toShow = standings.slice(0, 5);
-    if (homeRank && homeRank.rank > 5) toShow.push(homeRank);
-    if (awayRank && awayRank.rank > 5) toShow.push(awayRank);
 
     return `
       <div class="factor-section">
@@ -310,25 +300,20 @@ const Detail = {
             <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
             <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
           </svg>
-          ${I18n.t('standings')} ${seasonLabel}
+          ${I18n.t('standings')} <span style="color:var(--vip);font-size:9px;margin-inline-start:6px;font-weight:800">(${result.season})</span>
         </div>
         <div class="standings-header">
           <span>${I18n.t('rank')}</span>
           <span>${I18n.t('teamCol')}</span>
           <span>${I18n.t('pts')}</span>
         </div>
-        ${toShow.map(s => {
-          const isHome = s.teamId === m.homeId;
-          const isAway = s.teamId === m.awayId;
-          const cls = isHome ? 'standings-home' : (isAway ? 'standings-away' : '');
-          return `
-            <div class="standings-row ${cls}">
-              <span class="standings-rank">${s.rank}</span>
-              <span class="standings-team">${Helpers.teamName(s.teamName)}</span>
-              <span class="standings-pts">${s.points}</span>
-            </div>
-          `;
-        }).join('')}
+        ${toShow.map(s => `
+          <div class="standings-row">
+            <span class="standings-rank">${s.rank}</span>
+            <span class="standings-team">${Helpers.teamName(s.teamName)}</span>
+            <span class="standings-pts">${s.points}</span>
+          </div>
+        `).join('')}
       </div>
     `;
   },
@@ -359,85 +344,3 @@ const Detail = {
     this.open(id);
   }
 };
-/* ========== DONUT CHART ========== */
-.donut-wrapper {
-  display: flex;
-  justify-content: center;
-  padding: 10px 0 24px;
-}
-.donut-chart {
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  position: relative;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06) inset;
-  animation: donutSpin 1s ease-out;
-}
-@keyframes donutSpin {
-  from { transform: rotate(-90deg) scale(0.85); opacity: 0; }
-  to   { transform: rotate(0deg) scale(1); opacity: 1; }
-}
-.donut-inner {
-  position: absolute;
-  top: 22px;
-  left: 22px;
-  right: 22px;
-  bottom: 22px;
-  border-radius: 50%;
-  background: var(--bg-2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4) inset;
-}
-.donut-value {
-  font-size: 40px;
-  font-weight: 900;
-  font-family: ui-monospace, monospace;
-  line-height: 1;
-  letter-spacing: -1.5px;
-  text-shadow: 0 0 30px currentColor;
-}
-.donut-label {
-  font-size: 9px;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-top: 6px;
-  font-weight: 800;
-}
-
-.donut-legend {
-  display: flex;
-  justify-content: space-around;
-  padding: 4px 10px 0;
-  gap: 8px;
-}
-.donut-legend-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-}
-.donut-legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: 0 0 8px currentColor;
-}
-.donut-legend-name {
-  font-size: 9px;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  font-weight: 800;
-  text-align: center;
-}
-.donut-legend-val {
-  font-size: 16px;
-  font-weight: 900;
-  font-family: ui-monospace, monospace;
-  letter-spacing: -0.5px;
-  }
