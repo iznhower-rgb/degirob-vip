@@ -8,8 +8,12 @@ const Dashboard = {
     }
 
     const sorted = [...STATE.matches].sort((a, b) => b.analysis.ev - a.analysis.ev);
-    const golden = sorted.filter(m => m.analysis.confidence !== 'low').slice(0, 3);
-    const more = sorted.filter(m => !golden.includes(m)).slice(0, 5);
+    const live = sorted.filter(m => m.isLive);
+    const upcoming = sorted.filter(m => !m.isLive && !m.isPost);
+    const golden = [...live, ...upcoming].filter(m => m.analysis.confidence !== 'low').slice(0, 5);
+    const more = [...live, ...upcoming, ...sorted.filter(m => m.isPost)]
+      .filter(m => !golden.includes(m))
+      .slice(0, 15);
 
     const goldenEl = document.getElementById('goldenPicks');
     const moreEl = document.getElementById('morePicks');
@@ -24,9 +28,28 @@ const Dashboard = {
     this.renderStatusBadge();
   },
 
+  renderAll() {
+    const el = document.getElementById('allMatchesList');
+    if (!el) return;
+
+    if (!STATE.matches.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-title">${I18n.t('noMatches')}</div></div>`;
+      return;
+    }
+
+    const sorted = [...STATE.matches].sort((a, b) => {
+      if (a.isLive && !b.isLive) return -1;
+      if (!a.isLive && b.isLive) return 1;
+      if (!a.isPost && b.isPost) return -1;
+      if (a.isPost && !b.isPost) return 1;
+      return a.kickoff - b.kickoff;
+    });
+
+    el.innerHTML = sorted.slice(0, 100).map(m => this.renderCard(m, false)).join('');
+  },
+
   updateStats() {
     if (!STATE.matches.length) return this.updateStatsEmpty();
-
     const avgEV = STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length;
     const avgStars = STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length;
     const accuracy = Math.round((avgStars / 5) * 100);
@@ -36,28 +59,22 @@ const Dashboard = {
     this.animateStat('statAccuracy', accuracy, '', '%', 0);
 
     const accEl = document.getElementById('statAccuracy');
-    accEl.style.color = accuracy >= 65 ? 'var(--pos)'
-                      : accuracy >= 50 ? 'var(--vip)'
-                      : 'var(--neg)';
+    accEl.style.color = accuracy >= 65 ? 'var(--pos)' : accuracy >= 50 ? 'var(--vip)' : 'var(--neg)';
   },
 
   animateStat(id, target, prefix, suffix, decimals) {
     const el = document.getElementById(id);
     if (!el) return;
-
     const currentText = el.textContent || '';
     const currentNum = parseFloat(currentText.replace(/[^0-9.-]/g, ''));
     const current = isNaN(currentNum) ? 0 : currentNum;
-
     if (Math.abs(current - target) < 0.05) {
       el.textContent = prefix + (decimals > 0 ? target.toFixed(decimals) : Math.round(target)) + suffix;
       return;
     }
-
     const duration = 800;
     const startTime = performance.now();
     const startVal = current;
-
     const tick = (now) => {
       const progress = Math.min((now - startTime) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
@@ -87,9 +104,7 @@ const Dashboard = {
         'padding:7px 16px;border-radius:20px;font-size:10px;font-weight:900;' +
         'letter-spacing:1.5px;backdrop-filter:blur(10px);text-transform:uppercase;' +
         'cursor:pointer;font-family:ui-monospace,monospace;';
-      badge.addEventListener('click', () => {
-        if (window.eruda) eruda.show();
-      });
+      badge.addEventListener('click', () => { if (window.eruda) eruda.show(); });
       document.body.appendChild(badge);
     }
     const map = {
@@ -124,11 +139,11 @@ const Dashboard = {
     const friendly = {
       'NO_API_KEY': 'لم يتم إعداد مفتاح API',
       'KEY_INVALID': 'المفتاح غير صالح',
-      'NETWORK_ERROR': 'تعذر الاتصال بالإنترنت أو بخادم API',
-      'RATE_LIMIT': 'لقد استنفدت الحد اليومي (100 طلب). يرجى المحاولة غداً أو ترقية الخطة.', // 👈 تمت الإضافة
+      'NETWORK_ERROR': 'تعذر الاتصال بالإنترنت',
+      'RATE_LIMIT': 'تجاوزت الحد اليومي',
       'NO_MATCHES': '0 مباريات اليوم — جرّب لاحقاً',
       'NORMALIZE_FAILED': 'تعذّر تحويل البيانات',
-      'API_ERROR': 'خطأ من API-Football',
+      'API_ERROR': 'خطأ من مزود البيانات',
       'UNKNOWN': 'خطأ غير معروف'
     };
     const html = `
@@ -142,7 +157,6 @@ const Dashboard = {
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <button class="retry-btn" onclick="App.loadMatches()">🔄 إعادة المحاولة</button>
           <button class="retry-btn" style="background:linear-gradient(135deg,#F43F5E,#DC2626)" onclick="API.clearCache();location.reload()">🗑️ مسح cache</button>
-          <button class="retry-btn" style="background:linear-gradient(135deg,#6B7280,#4B5563)" onclick="if(window.eruda)eruda.show()">🔍 Console</button>
         </div>
       </div>`;
     const g = document.getElementById('goldenPicks');
@@ -164,6 +178,9 @@ const Dashboard = {
     if (m.isLive) {
       const minute = m.elapsed ? ' ' + m.elapsed + "'" : '';
       return `<span class="live-pulse"><span class="live-dot"></span>LIVE${minute}</span>`;
+    }
+    if (m.isPost) {
+      return `<div class="time-tag" style="background:rgba(90,96,114,0.2);color:var(--text-2)">FT</div>`;
     }
     return `<div class="time-tag">${m.time}</div>`;
   },
