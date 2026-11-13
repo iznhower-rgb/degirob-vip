@@ -22,7 +22,12 @@ const API = {
     }
 
     const status = await this.verifyKey();
-    if (!status.ok) throw new APIError('KEY_INVALID', status.message);
+    if (!status.ok) {
+      if (status.isNetworkError) {
+        throw new APIError('NETWORK_ERROR', 'تعذر الاتصال بالخادم. تحقق من الإنترنت.');
+      }
+      throw new APIError('KEY_INVALID', status.message);
+    }
     console.info('[API] ✅ Key:', status.message);
 
     const raw = await this.callFootballAPI();
@@ -41,7 +46,10 @@ const API = {
       const res = await fetch(`${CONFIG.API.FOOTBALL_BASE}/status`, {
         headers: { 'x-apisports-key': CONFIG.API.FOOTBALL_KEY }
       });
-      if (!res.ok) return { ok: false, message: `HTTP ${res.status}` };
+      if (!res.ok) {
+        if (res.status >= 500) return { ok: false, message: `HTTP ${res.status}`, isNetworkError: true };
+        return { ok: false, message: `HTTP ${res.status}` };
+      }
       const json = await res.json();
       if (json.errors && Object.keys(json.errors).length) {
         return { ok: false, message: JSON.stringify(json.errors) };
@@ -54,7 +62,8 @@ const API = {
       console.info('[API] Plan:', this._plan, '| Free:', this._isFree);
       return { ok: true, message: `Plan: ${this._plan} | ${req.current || 0}/${req.limit_day || 100}` };
     } catch (e) {
-      return { ok: false, message: 'Network: ' + e.message };
+      // هذا هو الخطأ الذي حدث معك (فشل الشبكة)
+      return { ok: false, message: 'Network: ' + e.message, isNetworkError: true };
     }
   },
 
