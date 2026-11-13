@@ -1,5 +1,12 @@
 const Dashboard = {
+  _countdownInterval: null,
+
   render() {
+    if (this._countdownInterval) {
+      clearInterval(this._countdownInterval);
+      this._countdownInterval = null;
+    }
+
     if (STATE.apiStatus === 'error' || !STATE.matches.length) {
       this.updateStatsEmpty();
       this.showError();
@@ -22,17 +29,21 @@ const Dashboard = {
 
     this.updateStats();
     this.renderStatusBadge();
+    this.updateCountdowns();
+    this._countdownInterval = setInterval(() => this.updateCountdowns(), 30000);
   },
 
   updateStats() {
     if (!STATE.matches.length) return this.updateStatsEmpty();
-    const avgEV = (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1);
+    const avgEV = STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length;
     const avgStars = STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length;
     const accuracy = Math.round((avgStars / 5) * 100);
-    document.getElementById('statPicks').textContent = STATE.matches.length;
-    document.getElementById('statEV').textContent = '+' + avgEV + '%';
+
+    Helpers.animateValue(document.getElementById('statPicks'), 0, STATE.matches.length, 800, '', '', 0);
+    Helpers.animateValue(document.getElementById('statEV'), 0, avgEV, 800, '+', '%', 1);
+    Helpers.animateValue(document.getElementById('statAccuracy'), 0, accuracy, 800, '', '%', 0);
+
     const accEl = document.getElementById('statAccuracy');
-    accEl.textContent = accuracy + '%';
     accEl.style.color = accuracy >= 65 ? 'var(--pos)' : accuracy >= 50 ? 'var(--vip)' : 'var(--neg)';
   },
 
@@ -42,6 +53,20 @@ const Dashboard = {
     const accEl = document.getElementById('statAccuracy');
     accEl.textContent = '0%';
     accEl.style.color = 'var(--neg)';
+  },
+
+  updateCountdowns() {
+    document.querySelectorAll('[data-kickoff]').forEach(el => {
+      const kickoff = parseInt(el.getAttribute('data-kickoff'), 10);
+      const formatted = Helpers.formatCountdown(kickoff);
+      if (formatted) {
+        const timeEl = el.querySelector('.countdown-time');
+        if (timeEl) timeEl.textContent = formatted;
+        el.style.display = 'flex';
+      } else {
+        el.style.display = 'none';
+      }
+    });
   },
 
   renderStatusBadge() {
@@ -121,9 +146,28 @@ const Dashboard = {
     const marketClass = a.market === 'clean' ? 'trap-clean' : a.market === 'trap' ? 'trap-trap' : 'trap-caution';
     const marketText = a.market === 'clean' ? 'CLEAN' : a.market === 'trap' ? 'TRAP' : 'CAUTION';
 
-    // ✅ ترجمة أسماء الفرق
     const homeName = Helpers.teamName(m.home);
     const awayName = Helpers.teamName(m.away);
+
+    const homeBadge = m.homeLogo
+      ? `<div class="team-badge has-logo"><img src="${m.homeLogo}" class="team-logo" alt="" loading="lazy" onerror="this.parentNode.classList.remove('has-logo');this.parentNode.textContent='${homeName.charAt(0)}';this.remove()"></div>`
+      : `<div class="team-badge">${homeName.charAt(0)}</div>`;
+
+    const awayBadge = m.awayLogo
+      ? `<div class="team-badge has-logo"><img src="${m.awayLogo}" class="team-logo" alt="" loading="lazy" onerror="this.parentNode.classList.remove('has-logo');this.parentNode.textContent='${awayName.charAt(0)}';this.remove()"></div>`
+      : `<div class="team-badge">${awayName.charAt(0)}</div>`;
+
+    const headerRight = m.isLive
+      ? `<span class="live-pulse"><span class="live-dot"></span>LIVE${m.elapsed ? ' ' + m.elapsed + "'" : ''}</span>`
+      : `<div class="time-tag">${m.time}</div>`;
+
+    const showCountdown = !m.isLive && m.kickoff && m.kickoff > Date.now();
+    const countdownBlock = showCountdown
+      ? `<div class="countdown" data-kickoff="${m.kickoff}" style="display:flex">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:10px;height:10px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+           <span class="countdown-time">${Helpers.formatCountdown(m.kickoff)}</span>
+         </div>`
+      : '';
 
     return `
       <div class="pick-card ${isGolden ? 'golden' : ''}" onclick="Detail.open('${m.id}')">
@@ -132,18 +176,19 @@ const Dashboard = {
             <span class="league-badge">${m.leagueBadge}</span>
             <span>${m.league}</span>
           </div>
-          <div class="time-tag">${m.time}</div>
+          ${headerRight}
         </div>
         <div class="pick-teams">
           <div class="team-row">
-            <div class="team-badge">${homeName.charAt(0)}</div>
+            ${homeBadge}
             <div class="team-name">${homeName}</div>
           </div>
           <div class="team-row">
-            <div class="team-badge">${awayName.charAt(0)}</div>
+            ${awayBadge}
             <div class="team-name">${awayName}</div>
           </div>
         </div>
+        ${countdownBlock}
         <div class="pick-footer">
           <div class="ev-badge">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
