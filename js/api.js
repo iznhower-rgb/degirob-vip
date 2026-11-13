@@ -1,37 +1,68 @@
+class APIError extends Error {
+  constructor(code, detail) {
+    super(detail || code);
+    this.code = code;
+    this.detail = detail || '';
+  }
+}
+
 const API = {
   async fetchMatches() {
+    if (!CONFIG.API.FOOTBALL_KEY || CONFIG.API.FOOTBALL_KEY.trim() === '') {
+      throw new APIError('NO_API_KEY', 'config.js: FOOTBALL_KEY فارغ');
+    }
+
     const cache = this.getCache();
     if (cache) {
-      console.info('[API] Using cached data:', cache.length, 'matches');
+      console.info('[API] ✅ From cache:', cache.length);
       return cache;
     }
 
-    if (!CONFIG.API.FOOTBALL_KEY || CONFIG.API.FOOTBALL_KEY.trim() === '') {
-      console.info('[API] No key — using demo');
-      return DEMO_MATCHES;
+    // 1. تحقق من المفتاح أولاً
+    const status = await this.verifyKey();
+    if (!status.ok) {
+      throw new APIError('KEY_INVALID', status.message);
+    }
+    console.info('[API] ✅ Key:', status.message);
+
+    // 2. جلب المباريات
+    const raw = await this.callFootballAPI();
+    if (!raw.length) {
+      throw new APIError('NO_MATCHES', 'API يعمل لكن 0 مباريات في دورياتك الخمس اليوم');
     }
 
+    // 3. التحويل
+    const matches = raw.map(i => this.normalizeMatch(i)).filter(Boolean);
+    if (!matches.length) {
+      throw new APIError('NORMALIZE_FAILED', 'فشل تحويل ' + raw.length + ' مباراة');
+    }
+
+    console.info('[API] ✅ LIVE:', matches.length, 'matches');
+    this.setCache(matches);
+    return matches;
+  },
+
+  async verifyKey() {
     try {
-      console.info('[API] Fetching from API-Football...');
-      const raw = await this.callFootballAPI();
+      const res = await fetch(`${CONFIG.API.FOOTBALL_BASE}/status`, {
+        headers: { 'x-apisports-key': CONFIG.API.FOOTBALL_KEY }
+      });
+      if (!res.ok) return { ok: false, message: `HTTP ${res.status}` };
+      const json = await res.json();
 
-      if (!raw.length) {
-        console.warn('[API] No qualifying matches — using demo');
-        return DEMO_MATCHES;
+      if (json.errors && Object.keys(json.errors).length) {
+        return { ok: false, message: JSON.stringify(json.errors) };
       }
 
-      const matches = raw.map(i => this.normalizeMatch(i)).filter(Boolean);
-      if (!matches.length) {
-        console.warn('[API] Normalization yielded 0 — using demo');
-        return DEMO_MATCHES;
-      }
-
-      console.info('[API] SUCCESS:', matches.length, 'real matches');
-      this.setCache(matches);
-      return matches;
-    } catch (err) {
-      console.error('[API] Failed:', err.message);
-      return DEMO_MATCHES;
+      const r = json.response || {};
+      const sub = r.subscription || {};
+      const req = r.requests || {};
+      return {
+        ok: true,
+        message: `Plan: ${sub.plan || 'Free'} | Usage: ${req.current || 0}/${req.limit_day || 100}`
+      };
+    } catch (e) {
+      return { ok: false, message: 'Network: ' + e.message };
     }
   },
 
@@ -46,59 +77,83 @@ const API = {
       `${CONFIG.API.FOOTBALL_BASE}/fixtures?date=${tomorrow}`
     ];
 
-    const leagueIds = new Set(CONFIG.API.LEAGUES);
     const seen = new Set();
     const result = [];
+    let lastError = null;
 
     for (const url of urls) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+        const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
         const res = await fetch(url, { headers, signal: controller.signal });
-        clearTimeout(timeoutId);
+        clearTimeout(t);
 
         if (!res.ok) {
-          console.warn('[API] HTTP', res.status, 'for', url.split('?')[1]);
+          console.warn(`[API] HTTP ${res.status} — ${url.split('?')[1]}`);
           continue;
         }
+
         const json = await res.json();
 
         if (json.errors && Object.keys(json.errors).length) {
-          console.warn('[API] API errors:', json.errors);
+          console.warn(`[API] Errors — ${url.split('?')[1]}:`, json.errors);
+          lastError = JSON.stringify(json.errors);
           continue;
         }
 
         const fixtures = json.response || [];
-        console.info('[API]', fixtures.length, 'fixtures from', url.split('?')[1]);
+        console.info(`[API] ${fixtures.length} from ${url.split('?')[1]}`);
 
         for (const item of fixtures) {
           if (!item.fixture || !item.league) continue;
           if (seen.has(item.fixture.id)) continue;
           seen.add(item.fixture.id);
-          if (!leagueIds.has(item.league.id)) continue;
+
           const status = item.fixture.status && item.fixture.status.short;
           if (['FT', 'AET', 'PEN', 'PST', 'CANC', 'ABD', 'AWD', 'WO'].includes(status)) continue;
+
           result.push(item);
         }
       } catch (e) {
-        console.warn('[API] Fetch error:', e.message);
+        console.warn(`[API] ${url.split('?')[1]} → ${e.message}`);
       }
     }
 
-    console.info('[API] Total unique qualifying fixtures:', result.length);
+    // فلترة الدوريات المهمة
+    const filtered = result.filter(i => this.isTopLeague(i.league));
+    console.info(`[API] ${result.length} total → ${filtered.length} top`);
 
-    const byLeague = {};
-    for (const item of result) {
-      const lid = item.league.id;
-      if (!byLeague[lid]) byLeague[lid] = [];
-      byLeague[lid].push(item);
+    // إذا الفلترة أفرغت كل شيء، خذ كل المتاح
+    if (filtered.length === 0 && result.length > 0) {
+      console.info('[API] No top leagues, using all available');
+      return result.slice(0, 15);
     }
 
-    const final = [];
-    for (const lid in byLeague) {
-      final.push(...byLeague[lid].slice(0, 2));
+    if (filtered.length === 0 && lastError) {
+      throw new APIError('API_ERROR', lastError);
     }
-    return final.slice(0, 10);
+
+    return filtered.slice(0, 15);
+  },
+
+  isTopLeague(league) {
+    if (!league) return false;
+    if (CONFIG.API.LEAGUES.includes(league.id)) return true;
+
+    const topNames = [
+      'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1',
+      'Eredivisie', 'Primeira Liga', 'Champions League', 'Europa League',
+      'Saudi Pro League', 'Super Lig', 'MLS', 'Copa', 'FA Cup',
+      'League Cup', 'Coppa', 'DFB', 'Coupe'
+    ];
+    const name = league.name || '';
+    if (topNames.some(t => name.indexOf(t) !== -1)) return true;
+
+    const topCountries = [
+      'England', 'Spain', 'Italy', 'Germany', 'France',
+      'Netherlands', 'Portugal', 'Saudi-Arabia', 'Turkey', 'USA'
+    ];
+    return topCountries.indexOf(league.country) !== -1;
   },
 
   normalizeMatch(item) {
@@ -109,8 +164,8 @@ const API = {
 
     const date = new Date(f.date);
     const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
     const seed = f.id % 100;
+
     const homeProb = 40 + (seed % 20);
     const awayProb = 20 + (seed % 15);
     const drawProb = Math.max(5, 100 - homeProb - awayProb);
@@ -119,8 +174,6 @@ const API = {
     const confidence = homeProb >= 55 ? 'high' : homeProb >= 45 ? 'medium' : 'low';
     const stars = confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3;
     const probDiff = Math.abs(homeProb - awayProb);
-    const ev = parseFloat((probDiff / 3 + 1).toFixed(1));
-    const kelly = parseFloat(Math.max(0.5, probDiff / 5).toFixed(1));
 
     return {
       id: String(f.id),
@@ -133,7 +186,9 @@ const API = {
         home: homeProb,
         draw: drawProb,
         away: awayProb,
-        ev, kelly, confidence, stars, bestBet,
+        ev: parseFloat((probDiff / 3 + 1).toFixed(1)),
+        kelly: parseFloat(Math.max(0.5, probDiff / 5).toFixed(1)),
+        confidence, stars, bestBet,
         market: 'clean',
         weather: { desc: 'N/A', temp: '--' },
         referee: 'Balanced',
@@ -166,9 +221,7 @@ const API = {
       const ageMin = (Date.now() - data.timestamp) / 60000;
       if (ageMin > CONFIG.API.CACHE_MINUTES) return null;
       return data.matches;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   },
 
   setCache(matches) {
@@ -176,9 +229,7 @@ const API = {
       localStorage.setItem(CONFIG.STORAGE_KEYS.MATCHES_CACHE, JSON.stringify({
         matches, timestamp: Date.now()
       }));
-    } catch (e) {
-      console.warn('[API] Cache write failed:', e);
-    }
+    } catch (e) { console.warn('[API] Cache write failed:', e); }
   },
 
   clearCache() {
