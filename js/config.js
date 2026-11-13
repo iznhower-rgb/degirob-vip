@@ -1,5 +1,5 @@
 const CONFIG = {
-  VERSION: '3.0.0-live',
+  VERSION: '3.1.0-rich',
   VALID_KEYS: [
     'DEGIROB-2026',
     'VIP-ALPHA-001',
@@ -10,7 +10,9 @@ const CONFIG = {
     LICENSE: 'degirob_license',
     LANG: 'degirob_lang',
     FAVORITES: 'degirob_favs',
-    MATCHES_CACHE: 'degirob_matches_cache_v3'
+    MATCHES_CACHE: 'degirob_matches_cache_v3',
+    H2H_CACHE: 'degirob_h2h_cache_v1',
+    STANDINGS_CACHE: 'degirob_standings_cache_v1'
   },
   DEFAULT_LANG: 'ar',
 
@@ -19,6 +21,8 @@ const CONFIG = {
     FOOTBALL_KEY: '30382d0168e91297cbd2d35849103ec0',
     LEAGUES: [39, 140, 135, 78, 61],
     CACHE_MINUTES: 5,
+    CACHE_H2H_MINUTES: 1440,
+    CACHE_STANDINGS_MINUTES: 360,
     TIMEOUT_MS: 10000
   }
 };
