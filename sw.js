@@ -1,5 +1,5 @@
 /* Service Worker — DeGirob VIP */
-const CACHE_VERSION = 'v20';
+const CACHE_VERSION = 'v23';
 const CACHE_NAME = `degirob-${CACHE_VERSION}`;
 
 const PRECACHE = [
@@ -54,11 +54,13 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
+  // طلبات خارجية (API، Eruda CDN): Network-First
   if (url.origin !== self.location.origin) {
     event.respondWith(networkFirst(req));
     return;
   }
 
+  // طلبات محلية: Cache-First
   event.respondWith(cacheFirst(req));
 });
 
