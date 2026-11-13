@@ -45,6 +45,18 @@ const Detail = {
         </div>
       </div>`;
 
+    // إعداد ألوان دائرة الاحتمالات
+    const best = a.bestBet;
+    const bestPct = best === 'home' ? a.home : best === 'away' ? a.away : a.draw;
+    const bestColor = best === 'home' ? 'var(--pos)' : best === 'away' ? 'var(--neg)' : 'var(--vip)';
+    const bestLabel = best === 'home' ? I18n.t('homeWin') : best === 'away' ? I18n.t('awayWin') : I18n.t('draw');
+
+    const donutGradient = `conic-gradient(
+      var(--pos) 0% ${a.home}%,
+      var(--vip) ${a.home}% ${a.home + a.draw}%,
+      var(--neg) ${a.home + a.draw}% 100%
+    )`;
+
     document.getElementById('detailContent').innerHTML = `
       <div class="hero-card">
         <div class="hero-teams">
@@ -64,23 +76,29 @@ const Detail = {
       ${marketBadge}
 
       <div class="prob-section">
-        <div class="prob-bar">
-          <div class="prob-home-bar" style="width:${a.home}%"></div>
-          <div class="prob-draw-bar" style="width:${a.draw}%"></div>
-          <div class="prob-away-bar" style="width:${a.away}%"></div>
+        <div class="donut-wrapper">
+          <div class="donut-chart" style="background: ${donutGradient}">
+            <div class="donut-inner">
+              <div class="donut-value" style="color: ${bestColor}">${bestPct}%</div>
+              <div class="donut-label">${bestLabel}</div>
+            </div>
+          </div>
         </div>
-        <div class="prob-labels">
-          <div class="prob-label-item">
-            <div class="name">${I18n.t('homeWin')}</div>
-            <div class="val">${a.home}%</div>
+        <div class="donut-legend">
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot" style="background: var(--pos)"></div>
+            <div class="donut-legend-name">${I18n.t('homeWin')}</div>
+            <div class="donut-legend-val" style="color: var(--pos)">${a.home}%</div>
           </div>
-          <div class="prob-label-item">
-            <div class="name">${I18n.t('draw')}</div>
-            <div class="val">${a.draw}%</div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot" style="background: var(--vip)"></div>
+            <div class="donut-legend-name">${I18n.t('draw')}</div>
+            <div class="donut-legend-val" style="color: var(--vip)">${a.draw}%</div>
           </div>
-          <div class="prob-label-item">
-            <div class="name">${I18n.t('awayWin')}</div>
-            <div class="val">${a.away}%</div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot" style="background: var(--neg)"></div>
+            <div class="donut-legend-name">${I18n.t('awayWin')}</div>
+            <div class="donut-legend-val" style="color: var(--neg)">${a.away}%</div>
           </div>
         </div>
       </div>
@@ -341,3 +359,85 @@ const Detail = {
     this.open(id);
   }
 };
+/* ========== DONUT CHART ========== */
+.donut-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 24px;
+}
+.donut-chart {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06) inset;
+  animation: donutSpin 1s ease-out;
+}
+@keyframes donutSpin {
+  from { transform: rotate(-90deg) scale(0.85); opacity: 0; }
+  to   { transform: rotate(0deg) scale(1); opacity: 1; }
+}
+.donut-inner {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  right: 22px;
+  bottom: 22px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4) inset;
+}
+.donut-value {
+  font-size: 40px;
+  font-weight: 900;
+  font-family: ui-monospace, monospace;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  text-shadow: 0 0 30px currentColor;
+}
+.donut-label {
+  font-size: 9px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 6px;
+  font-weight: 800;
+}
+
+.donut-legend {
+  display: flex;
+  justify-content: space-around;
+  padding: 4px 10px 0;
+  gap: 8px;
+}
+.donut-legend-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.donut-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+.donut-legend-name {
+  font-size: 9px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 800;
+  text-align: center;
+}
+.donut-legend-val {
+  font-size: 16px;
+  font-weight: 900;
+  font-family: ui-monospace, monospace;
+  letter-spacing: -0.5px;
+  }
