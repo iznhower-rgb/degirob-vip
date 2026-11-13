@@ -1,0 +1,28 @@
+{
+  "name": "DeGirob VIP",
+  "short_name": "DeGirob",
+  "description": "Elite Tactical Intelligence — تحليلات كرة القدم",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05070D",
+  "theme_color": "#05070D",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["sports", "news"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
