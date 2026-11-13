@@ -7,6 +7,9 @@ class APIError extends Error {
 }
 
 const API = {
+  _plan: null,
+  _isFree: false,
+
   async fetchMatches() {
     if (!CONFIG.API.FOOTBALL_KEY || CONFIG.API.FOOTBALL_KEY.trim() === '') {
       throw new APIError('NO_API_KEY', 'config.js: FOOTBALL_KEY فارغ');
@@ -46,7 +49,10 @@ const API = {
       const r = json.response || {};
       const sub = r.subscription || {};
       const req = r.requests || {};
-      return { ok: true, message: `Plan: ${sub.plan || '?'} | ${req.current || 0}/${req.limit_day || 100}` };
+      this._plan = sub.plan || 'Free';
+      this._isFree = (this._plan === 'Free');
+      console.info('[API] Plan:', this._plan, '| Free:', this._isFree);
+      return { ok: true, message: `Plan: ${this._plan} | ${req.current || 0}/${req.limit_day || 100}` };
     } catch (e) {
       return { ok: false, message: 'Network: ' + e.message };
     }
@@ -73,19 +79,15 @@ const API = {
         const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
         const res = await fetch(url, { headers, signal: controller.signal });
         clearTimeout(t);
-
         if (!res.ok) { console.warn(`[API] HTTP ${res.status}`); continue; }
         const json = await res.json();
-
         if (json.errors && Object.keys(json.errors).length) {
           console.warn('[API] errors:', json.errors);
           lastError = JSON.stringify(json.errors);
           continue;
         }
-
         const fixtures = json.response || [];
         console.info(`[API] ${fixtures.length} from ${url.split('?')[1]}`);
-
         for (const item of fixtures) {
           if (!item.fixture || !item.league) continue;
           if (seen.has(item.fixture.id)) continue;
@@ -116,7 +118,8 @@ const API = {
     }
 
     try {
-      const url = `${CONFIG.API.FOOTBALL_BASE}/fixtures/headtohead?h2h=${homeId}-${awayId}&last=5`;
+      // ✅ بدون last=5 (ميزة مدفوعة) — نقلّص على العميل
+      const url = `${CONFIG.API.FOOTBALL_BASE}/fixtures/headtohead?h2h=${homeId}-${awayId}`;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
       const res = await fetch(url, {
@@ -136,15 +139,19 @@ const API = {
         return s === 'FT' || s === 'AET' || s === 'PEN';
       });
 
-      const result = fixtures.map(f => ({
-        date: f.fixture.date,
-        homeId: f.teams.home.id,
-        awayId: f.teams.away.id,
-        homeName: f.teams.home.name,
-        awayName: f.teams.away.name,
-        homeGoals: f.goals.home,
-        awayGoals: f.goals.away
-      }));
+      // ✅ ترتيب تنازلي + اقتصاص أول 5
+      const result = fixtures
+        .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+        .slice(0, 5)
+        .map(f => ({
+          date: f.fixture.date,
+          homeId: f.teams.home.id,
+          awayId: f.teams.away.id,
+          homeName: f.teams.home.name,
+          awayName: f.teams.away.name,
+          homeGoals: f.goals.home,
+          awayGoals: f.goals.away
+        }));
 
       console.info('[API] H2H loaded:', result.length);
       this._setCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, result, 30);
@@ -156,16 +163,19 @@ const API = {
   },
 
   async fetchStandings(leagueId, season) {
-    if (!leagueId || !season) return null;
-    const cacheKey = `${leagueId}-${season}`;
+    if (!leagueId) return null;
+    // ✅ على Free: 2024 تلقائياً (الخطة المجانية لا تدعم الموسم الحالي)
+    const effectiveSeason = this._isFree ? 2024 : season;
+    const cacheKey = `${leagueId}-${effectiveSeason}`;
+
     const cached = this._getCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, CONFIG.API.CACHE_STANDINGS_MINUTES);
     if (cached !== null) {
-      console.info('[API] Standings from cache');
+      console.info('[API] Standings from cache (season:', effectiveSeason, ')');
       return cached;
     }
 
     try {
-      const url = `${CONFIG.API.FOOTBALL_BASE}/standings?league=${leagueId}&season=${season}`;
+      const url = `${CONFIG.API.FOOTBALL_BASE}/standings?league=${leagueId}&season=${effectiveSeason}`;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
       const res = await fetch(url, {
@@ -181,7 +191,7 @@ const API = {
       }
 
       const table = json.response?.[0]?.league?.standings?.[0] || [];
-      const result = table.map(s => ({
+      const standings = table.map(s => ({
         rank: s.rank,
         teamId: s.team.id,
         teamName: s.team.name,
@@ -192,7 +202,13 @@ const API = {
         lose: (s.all && s.all.lose) || 0
       }));
 
-      console.info('[API] Standings loaded:', result.length);
+      const result = {
+        standings,
+        season: effectiveSeason,
+        isHistorical: this._isFree && effectiveSeason !== season
+      };
+
+      console.info('[API] Standings loaded:', standings.length, '| season:', effectiveSeason);
       this._setCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, result, 10);
       return result;
     } catch (e) {
