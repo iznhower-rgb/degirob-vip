@@ -1,5 +1,12 @@
 const Dashboard = {
   render() {
+    if (STATE.apiStatus === 'error' || !STATE.matches.length) {
+      this.updateStatsEmpty();
+      this.showError();
+      this.renderStatusBadge();
+      return;
+    }
+
     const sorted = [...STATE.matches].sort((a, b) => b.analysis.ev - a.analysis.ev);
     const golden = sorted.filter(m => m.analysis.confidence !== 'low').slice(0, 3);
     const more = sorted.filter(m => !golden.includes(m)).slice(0, 5);
@@ -13,13 +20,15 @@ const Dashboard = {
 
     moreEl.innerHTML = more.map(m => this.renderCard(m, false)).join('');
 
-    const avgEV = STATE.matches.length
-      ? (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1)
-      : '0';
+    this.updateStats();
+    this.renderStatusBadge();
+  },
 
-    const avgStars = STATE.matches.length
-      ? STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length
-      : 0;
+  updateStats() {
+    if (!STATE.matches.length) return this.updateStatsEmpty();
+
+    const avgEV = (STATE.matches.reduce((s, m) => s + m.analysis.ev, 0) / STATE.matches.length).toFixed(1);
+    const avgStars = STATE.matches.reduce((s, m) => s + m.analysis.stars, 0) / STATE.matches.length;
     const accuracy = Math.round((avgStars / 5) * 100);
 
     document.getElementById('statPicks').textContent = STATE.matches.length;
@@ -30,48 +39,91 @@ const Dashboard = {
     accEl.style.color = accuracy >= 65 ? 'var(--pos)'
                       : accuracy >= 50 ? 'var(--vip)'
                       : 'var(--neg)';
-
-    this.renderDemoBadge();
   },
 
-  renderDemoBadge() {
-    let badge = document.getElementById('demoBadge');
+  updateStatsEmpty() {
+    document.getElementById('statPicks').textContent = '0';
+    document.getElementById('statEV').textContent = '+0%';
+    const accEl = document.getElementById('statAccuracy');
+    accEl.textContent = '0%';
+    accEl.style.color = 'var(--neg)';
+  },
+
+  renderStatusBadge() {
+    let badge = document.getElementById('statusBadge');
     if (!badge) {
       badge = document.createElement('div');
-      badge.id = 'demoBadge';
-      badge.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:99;' +
-        'padding:6px 14px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:1.5px;' +
-        'background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.5);color:#F59E0B;' +
-        'backdrop-filter:blur(8px);pointer-events:none;text-transform:uppercase;';
-      badge.textContent = '⚠ DEMO';
+      badge.id = 'statusBadge';
+      badge.style.cssText =
+        'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:999;' +
+        'padding:7px 16px;border-radius:20px;font-size:10px;font-weight:900;' +
+        'letter-spacing:1.5px;backdrop-filter:blur(10px);text-transform:uppercase;' +
+        'cursor:pointer;font-family:ui-monospace,monospace;';
+      badge.addEventListener('click', () => {
+        if (window.eruda) eruda.show();
+        else alert('Console غير متاح');
+      });
       document.body.appendChild(badge);
     }
-    badge.style.display = STATE.usingDemo ? 'block' : 'none';
+
+    const map = {
+      loading: { bg: 'rgba(139,92,246,0.15)', bd: 'rgba(139,92,246,0.5)', cl: '#8B5CF6', tx: '⏳ LOADING' },
+      live:    { bg: 'rgba(16,185,129,0.15)', bd: 'rgba(16,185,129,0.5)', cl: '#10B981', tx: '🟢 LIVE ' + STATE.matches.length },
+      error:   { bg: 'rgba(244,63,94,0.15)',  bd: 'rgba(244,63,94,0.5)',  cl: '#F43F5E', tx: '🔴 ' + (STATE.apiError?.code || 'ERROR') }
+    };
+    const s = map[STATE.apiStatus] || map.loading;
+    badge.style.background = s.bg;
+    badge.style.border = '1px solid ' + s.bd;
+    badge.style.color = s.cl;
+    badge.textContent = s.tx;
+    badge.style.display = 'block';
   },
 
   showLoading() {
-    const skeleton = `
+    const sk = `
       <div class="skeleton-card">
         <div class="skeleton skeleton-line" style="width:40%"></div>
         <div class="skeleton skeleton-line" style="width:80%;height:20px;margin-top:14px"></div>
         <div class="skeleton skeleton-line" style="width:60%;height:20px;margin-top:10px"></div>
         <div class="skeleton skeleton-line" style="width:100%;height:1px;margin-top:20px"></div>
-      </div>
-    `;
+      </div>`;
     const g = document.getElementById('goldenPicks');
     const m = document.getElementById('morePicks');
-    if (g) g.innerHTML = skeleton + skeleton + skeleton;
+    if (g) g.innerHTML = sk + sk + sk;
     if (m) m.innerHTML = '';
   },
 
   showError() {
+    const e = STATE.apiError || { code: 'UNKNOWN', message: 'خطأ غير معروف', detail: '' };
+
+    const friendly = {
+      'NO_API_KEY': 'لم يتم إعداد مفتاح API في config.js',
+      'KEY_INVALID': 'المفتاح غير صالح — أعد توليده من api-football.com',
+      'NO_MATCHES': 'المفتاح يعمل، لكن 0 مباريات في دورياتك اليوم. جرّب لاحقاً أو أضف دوريات أخرى.',
+      'NORMALIZE_FAILED': 'استلمنا مباريات لكن تعذّر تحويلها — أرسل تقرير Console',
+      'API_ERROR': 'خطأ من API-Football',
+      'UNKNOWN': 'خطأ غير معروف'
+    };
+
     const html = `
-      <div class="empty-state">
-        <div class="empty-state-title">⚠️ ${I18n.t('errorLoading')}</div>
-        <div class="empty-state-sub">${I18n.t('errorRetry')}</div>
-        <button class="retry-btn" onclick="App.loadMatches()">${I18n.t('retry')}</button>
-      </div>
-    `;
+      <div class="empty-state" style="padding:40px 20px">
+        <div style="font-size:40px;margin-bottom:16px">⚠️</div>
+        <div class="empty-state-title" style="margin-bottom:10px;font-size:15px">
+          ${friendly[e.code] || e.message}
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-family:ui-monospace,monospace">
+          ${e.code}
+        </div>
+        <div style="font-size:10px;color:var(--text-3);margin-bottom:24px;font-family:ui-monospace,monospace;word-break:break-all;max-width:340px;margin-left:auto;margin-right:auto">
+          ${(e.detail || e.message || '').substring(0, 200)}
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="retry-btn" onclick="App.loadMatches()">🔄 إعادة المحاولة</button>
+          <button class="retry-btn" style="background:linear-gradient(135deg,#F43F5E,#DC2626)" onclick="API.clearCache();location.reload()">🗑️ مسح الـ cache</button>
+          <button class="retry-btn" style="background:linear-gradient(135deg,#6B7280,#4B5563)" onclick="if(window.eruda)eruda.show()">🔍 Console</button>
+        </div>
+      </div>`;
+
     const g = document.getElementById('goldenPicks');
     const m = document.getElementById('morePicks');
     if (g) g.innerHTML = html;
