@@ -30,6 +30,23 @@ const Dashboard = {
     accEl.style.color = accuracy >= 65 ? 'var(--pos)'
                       : accuracy >= 50 ? 'var(--vip)'
                       : 'var(--neg)';
+
+    this.renderDemoBadge();
+  },
+
+  renderDemoBadge() {
+    let badge = document.getElementById('demoBadge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'demoBadge';
+      badge.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:99;' +
+        'padding:6px 14px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:1.5px;' +
+        'background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.5);color:#F59E0B;' +
+        'backdrop-filter:blur(8px);pointer-events:none;text-transform:uppercase;';
+      badge.textContent = '⚠ DEMO';
+      document.body.appendChild(badge);
+    }
+    badge.style.display = STATE.usingDemo ? 'block' : 'none';
   },
 
   showLoading() {
