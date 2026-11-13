@@ -47,7 +47,13 @@ const TRANSLATIONS_AR = {
   fav: 'المفضلة',
   fresh: 'جاهز',
   tired: 'مرهق',
-
+h2h: 'المواجهات المباشرة',
+standings: 'الترتيب',
+noH2H: 'لا توجد مواجهات سابقة',
+noStandings: 'الترتيب غير متاح لهذا الموسم',
+rank: '#',
+teamCol: 'الفريق',
+pts: 'النقاط',
   errorLoading: 'تعذر تحميل البيانات',
   errorRetry: 'تحقق من اتصالك وحاول مجدداً',
   retry: 'إعادة المحاولة'
