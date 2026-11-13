@@ -7,136 +7,142 @@ class APIError extends Error {
 }
 
 const API = {
-  _plan: null,
-  _isFree: false,
-
   async fetchMatches() {
-    if (!CONFIG.API.FOOTBALL_KEY || CONFIG.API.FOOTBALL_KEY.trim() === '') {
-      throw new APIError('NO_API_KEY', 'config.js: FOOTBALL_KEY فارغ');
-    }
-
     const cache = this.getCache();
     if (cache) {
       console.info('[API] ✅ From cache:', cache.length);
       return cache;
     }
 
-    const status = await this.verifyKey();
-    if (!status.ok) {
-      if (status.isNetworkError) {
-        throw new APIError('NETWORK_ERROR', 'تعذر الاتصال بالخادم. تحقق من الإنترنت.');
-      }
-      if (status.isRateLimit) {
-        throw new APIError('RATE_LIMIT', 'لقد تجاوزت الحد اليومي للطلبات (100 طلب). يرجى المحاولة غداً.');
-      }
-      throw new APIError('KEY_INVALID', status.message);
-    }
-    console.info('[API] ✅ Key:', status.message);
-
-    const raw = await this.callFootballAPI();
-    if (!raw.length) throw new APIError('NO_MATCHES', '0 مباريات في دورياتك اليوم');
-
-    const matches = raw.map(i => this.normalizeMatch(i)).filter(Boolean);
-    if (!matches.length) throw new APIError('NORMALIZE_FAILED', 'فشل التحويل');
-
-    console.info('[API] ✅ LIVE:', matches.length);
-    this.setCache(matches);
-    return matches;
-  },
-
-  async verifyKey() {
     try {
-      const res = await fetch(`${CONFIG.API.FOOTBALL_BASE}/status`, {
-        headers: { 'x-apisports-key': CONFIG.API.FOOTBALL_KEY }
-      });
-      if (!res.ok) {
-        if (res.status === 429) return { ok: false, isRateLimit: true, message: 'HTTP 429' };
-        if (res.status >= 500) return { ok: false, isNetworkError: true, message: `HTTP ${res.status}` };
-        return { ok: false, message: `HTTP ${res.status}` };
-      }
-      const json = await res.json();
-      
-      if (json.errors && Object.keys(json.errors).length) {
-        if (json.errors.requests) {
-          return { ok: false, isRateLimit: true, message: json.errors.requests };
-        }
-        return { ok: false, message: JSON.stringify(json.errors) };
-      }
-      
-      const r = json.response || {};
-      const sub = r.subscription || {};
-      const req = r.requests || {};
-      this._plan = sub.plan || 'Free';
-      this._isFree = (this._plan === 'Free');
-      console.info('[API] Plan:', this._plan, '| Free:', this._isFree);
-      return { ok: true, message: `Plan: ${this._plan} | ${req.current || 0}/${req.limit_day || 100}` };
-    } catch (e) {
-      return { ok: false, message: 'Network: ' + e.message, isNetworkError: true };
+      const raw = await this.callESPN();
+      if (!raw.length) throw new APIError('NO_MATCHES', '0 مباريات في دورياتك اليوم');
+
+      const matches = raw.map(i => this.normalizeMatch(i)).filter(Boolean);
+      if (!matches.length) throw new APIError('NORMALIZE_FAILED', 'فشل التحويل');
+
+      console.info('[API] ✅ LIVE:', matches.length);
+      this.setCache(matches);
+      return matches;
+    } catch (err) {
+      console.error('[API] Failed:', err.message);
+      throw err;
     }
   },
 
-  async callFootballAPI() {
-    const headers = { 'x-apisports-key': CONFIG.API.FOOTBALL_KEY };
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  async callESPN() {
+    const all = [];
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
 
-    const urls = [
-      `${CONFIG.API.FOOTBALL_BASE}/fixtures?live=all`,
-      `${CONFIG.API.FOOTBALL_BASE}/fixtures?date=${today}`,
-      `${CONFIG.API.FOOTBALL_BASE}/fixtures?date=${tomorrow}`
-    ];
-
-    const seen = new Set();
-    const result = [];
-    let lastError = null;
-
-    for (const url of urls) {
+    for (const league of CONFIG.API.ESPN_LEAGUES) {
       try {
+        const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${today}`;
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
-        const res = await fetch(url, { headers, signal: controller.signal });
+        const res = await fetch(url, { signal: controller.signal });
         clearTimeout(t);
-        
-        if (!res.ok) { 
-          if (res.status === 429) throw new Error('Rate Limit Reached');
-          console.warn(`[API] HTTP ${res.status}`); 
-          continue; 
-        }
-        
-        const json = await res.json();
-        
-        if (json.errors && Object.keys(json.errors).length) {
-          if (json.errors.requests) throw new Error('Rate Limit Reached');
-          console.warn('[API] errors:', json.errors);
-          lastError = JSON.stringify(json.errors);
+
+        if (!res.ok) {
+          console.warn(`[API] ESPN ${league.slug}: HTTP ${res.status}`);
           continue;
         }
-        
-        const fixtures = json.response || [];
-        console.info(`[API] ${fixtures.length} from ${url.split('?')[1]}`);
-        for (const item of fixtures) {
-          if (!item.fixture || !item.league) continue;
-          if (seen.has(item.fixture.id)) continue;
-          seen.add(item.fixture.id);
-          const status = item.fixture.status && item.fixture.status.short;
-          if (['FT', 'AET', 'PEN', 'PST', 'CANC', 'ABD', 'AWD', 'WO'].includes(status)) continue;
-          result.push(item);
+
+        const json = await res.json();
+        const events = json.events || [];
+        console.info(`[API] ESPN ${league.slug}: ${events.length} events`);
+
+        for (const ev of events) {
+          const comp = ev.competitions && ev.competitions[0];
+          if (!comp || !comp.competitors) continue;
+
+          const home = comp.competitors.find(c => c.homeAway === 'home');
+          const away = comp.competitors.find(c => c.homeAway === 'away');
+          if (!home || !away) continue;
+
+          const statusState = ev.status?.type?.state || 'pre';
+          if (statusState === 'post') continue;
+
+          const isLive = statusState === 'in';
+          const elapsed = isLive && ev.status?.displayClock
+            ? parseInt(ev.status.displayClock.replace("'", ''), 10)
+            : null;
+
+          const dateObj = new Date(ev.date);
+          const time = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+          all.push({
+            id: String(ev.id),
+            leagueSlug: league.slug,
+            league: league.name,
+            leagueBadge: league.badge,
+            home: home.team.displayName || home.team.name,
+            away: away.team.displayName || away.team.name,
+            homeId: home.team.id,
+            awayId: away.team.id,
+            homeLogo: home.team.logo || null,
+            awayLogo: away.team.logo || null,
+            time,
+            isLive,
+            elapsed,
+            kickoff: dateObj.getTime(),
+            statusShort: ev.status?.type?.shortDetail || 'NS',
+            competitionName: ev.name || ''
+          });
         }
       } catch (e) {
-        console.warn(`[API] ${url.split('?')[1]} → ${e.message}`);
+        console.warn(`[API] ESPN ${league.slug} failed:`, e.message);
       }
     }
 
-    const filtered = result.filter(i => this.isTopLeague(i.league));
-    console.info(`[API] ${result.length} total → ${filtered.length} top`);
-    if (filtered.length === 0 && result.length > 0) return result.slice(0, 15);
-    if (filtered.length === 0 && lastError) throw new APIError('API_ERROR', lastError);
-    return filtered.slice(0, 15);
+    return all;
   },
 
-  async fetchH2H(homeId, awayId) {
-    if (!homeId || !awayId) return [];
-    const cacheKey = `${homeId}-${awayId}`;
+  normalizeMatch(ev) {
+    const seed = parseInt(ev.id.slice(-3), 10) || 1;
+    const homeProb = 40 + (seed % 20);
+    const awayProb = 20 + (seed % 15);
+    const drawProb = Math.max(5, 100 - homeProb - awayProb);
+    const bestBet = homeProb > awayProb ? 'home' : 'away';
+    const confidence = homeProb >= 55 ? 'high' : homeProb >= 45 ? 'medium' : 'low';
+    const stars = confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3;
+    const probDiff = Math.abs(homeProb - awayProb);
+
+    return {
+      id: ev.id,
+      homeId: ev.homeId,
+      awayId: ev.awayId,
+      leagueId: ev.leagueSlug,
+      league: ev.league,
+      leagueBadge: ev.leagueBadge,
+      home: ev.home,
+      away: ev.away,
+      homeLogo: ev.homeLogo,
+      awayLogo: ev.awayLogo,
+      time: ev.time,
+      isLive: ev.isLive,
+      elapsed: ev.elapsed,
+      kickoff: ev.kickoff,
+      statusShort: ev.statusShort,
+      analysis: {
+        home: homeProb, draw: drawProb, away: awayProb,
+        ev: parseFloat((probDiff / 3 + 1).toFixed(1)),
+        kelly: parseFloat(Math.max(0.5, probDiff / 5).toFixed(1)),
+        confidence, stars, bestBet,
+        market: 'clean',
+        weather: { desc: 'N/A', temp: '--' },
+        referee: 'Balanced',
+        fatigue: { home: 'Fresh', away: 'Fresh' },
+        coach: 'Balanced',
+        xg: {
+          home: parseFloat((1.0 + (seed % 15) / 10).toFixed(2)),
+          away: parseFloat((0.8 + ((seed * 2) % 12) / 10).toFixed(2))
+        }
+      }
+    };
+  },
+
+  async fetchH2H(homeName, awayName) {
+    const cacheKey = `${homeName}-${awayName}`;
     const cached = this._getCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, CONFIG.API.CACHE_H2H_MINUTES);
     if (cached !== null) {
       console.info('[API] H2H from cache');
@@ -144,99 +150,94 @@ const API = {
     }
 
     try {
-      const url = `${CONFIG.API.FOOTBALL_BASE}/fixtures/headtohead?h2h=${homeId}-${awayId}`;
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
-      const res = await fetch(url, {
-        headers: { 'x-apisports-key': CONFIG.API.FOOTBALL_KEY },
-        signal: controller.signal
-      });
-      clearTimeout(t);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const homeId = await this._searchTeamId(homeName);
+      const awayId = await this._searchTeamId(awayName);
 
-      const json = await res.json();
-      if (json.errors && Object.keys(json.errors).length) {
-        throw new Error(JSON.stringify(json.errors));
-      }
+      const homeMatches = homeId ? await this._fetchTeamLast(homeId) : [];
+      const awayMatches = awayId ? await this._fetchTeamLast(awayId) : [];
 
-      const fixtures = (json.response || []).filter(f => {
-        const s = f.fixture && f.fixture.status && f.fixture.status.short;
-        return s === 'FT' || s === 'AET' || s === 'PEN';
-      });
-
-      const result = fixtures
-        .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-        .slice(0, 5)
-        .map(f => ({
-          date: f.fixture.date,
-          homeId: f.teams.home.id,
-          awayId: f.teams.away.id,
-          homeName: f.teams.home.name,
-          awayName: f.teams.away.name,
-          homeGoals: f.goals.home,
-          awayGoals: f.goals.away
-        }));
+      const combined = [...homeMatches, ...awayMatches];
+      combined.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const result = combined.slice(0, 5);
 
       console.info('[API] H2H loaded:', result.length);
       this._setCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, result, 30);
       return result;
     } catch (e) {
       console.warn('[API] H2H failed:', e.message);
-      throw e;
+      return [];
     }
   },
 
-  async fetchStandings(leagueId, season) {
-    if (!leagueId) return null;
-    const effectiveSeason = (!this._plan || this._isFree) ? 2024 : season;
-    const cacheKey = `${leagueId}-${effectiveSeason}`;
+  async _searchTeamId(teamName) {
+    try {
+      const url = `${CONFIG.API.TSDB_BASE}/searchteams.php?t=${encodeURIComponent(teamName)}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const json = await res.json();
+      const teams = json.teams;
+      if (!teams || !teams.length) return null;
+      return teams[0].idTeam;
+    } catch (e) {
+      return null;
+    }
+  },
 
+  async _fetchTeamLast(teamId) {
+    try {
+      const url = `${CONFIG.API.TSDB_BASE}/eventslast.php?id=${teamId}`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const results = json.results || [];
+      return results.map(r => ({
+        date: r.dateEvent,
+        homeName: r.strHomeTeam,
+        awayName: r.strAwayTeam,
+        homeGoals: parseInt(r.intHomeScore, 10),
+        awayGoals: parseInt(r.intAwayScore, 10)
+      }));
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async fetchStandings(leagueSlug) {
+    const leagueId = CONFIG.API.TSDB_LEAGUES[leagueSlug];
+    if (!leagueId) return null;
+
+    const cacheKey = `${leagueSlug}-${CONFIG.API.TSDB_SEASON}`;
     const cached = this._getCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, CONFIG.API.CACHE_STANDINGS_MINUTES);
     if (cached !== null) {
-      console.info('[API] Standings from cache (season:', effectiveSeason, ')');
+      console.info('[API] Standings from cache');
       return cached;
     }
 
     try {
-      const url = `${CONFIG.API.FOOTBALL_BASE}/standings?league=${leagueId}&season=${effectiveSeason}`;
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
-      const res = await fetch(url, {
-        headers: { 'x-apisports-key': CONFIG.API.FOOTBALL_KEY },
-        signal: controller.signal
-      });
-      clearTimeout(t);
+      const url = `${CONFIG.API.TSDB_BASE}/lookuptable.php?l=${leagueId}&s=${CONFIG.API.TSDB_SEASON}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const json = await res.json();
-      if (json.errors && Object.keys(json.errors).length) {
-        throw new Error(JSON.stringify(json.errors));
-      }
+      const table = json.table || [];
 
-      const table = json.response?.[0]?.league?.standings?.[0] || [];
-      const standings = table.map(s => ({
-        rank: s.rank,
-        teamId: s.team.id,
-        teamName: s.team.name,
-        points: s.points,
-        played: (s.all && s.all.played) || 0,
-        win: (s.all && s.all.win) || 0,
-        draw: (s.all && s.all.draw) || 0,
-        lose: (s.all && s.all.lose) || 0
+      const standings = table.map(row => ({
+        rank: parseInt(row.intRank, 10),
+        teamId: row.idTeam,
+        teamName: row.strTeam,
+        points: parseInt(row.intPoints, 10) || 0,
+        played: parseInt(row.intPlayed, 10) || 0,
+        win: parseInt(row.intWin, 10) || 0,
+        draw: parseInt(row.intDraw, 10) || 0,
+        lose: parseInt(row.intLoss, 10) || 0
       }));
 
-      const result = {
-        standings,
-        season: effectiveSeason,
-        isHistorical: effectiveSeason !== season
-      };
-
-      console.info('[API] Standings loaded:', standings.length, '| season:', effectiveSeason);
+      const result = { standings, season: CONFIG.API.TSDB_SEASON };
+      console.info('[API] Standings loaded:', standings.length);
       this._setCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, result, 10);
       return result;
     } catch (e) {
       console.warn('[API] Standings failed:', e.message);
-      throw e;
+      return null;
     }
   },
 
@@ -264,86 +265,6 @@ const API = {
       }
       localStorage.setItem(storageKey, JSON.stringify(data));
     } catch (e) { console.warn('[API] cache write:', e); }
-  },
-
-  isTopLeague(league) {
-    if (!league) return false;
-    if (CONFIG.API.LEAGUES.includes(league.id)) return true;
-    const topNames = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1',
-      'Eredivisie', 'Primeira Liga', 'Champions League', 'Europa League',
-      'Saudi Pro League', 'Super Lig', 'MLS', 'Copa', 'FA Cup', 'League Cup'];
-    const name = league.name || '';
-    if (topNames.some(t => name.indexOf(t) !== -1)) return true;
-    const topCountries = ['England', 'Spain', 'Italy', 'Germany', 'France',
-      'Netherlands', 'Portugal', 'Saudi-Arabia', 'Turkey', 'USA'];
-    return topCountries.indexOf(league.country) !== -1;
-  },
-
-  normalizeMatch(item) {
-    const f = item.fixture;
-    const t = item.teams;
-    const l = item.league;
-    if (!f || !t || !l) return null;
-
-    const date = new Date(f.date);
-    const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    const seed = f.id % 100;
-
-    const homeProb = 40 + (seed % 20);
-    const awayProb = 20 + (seed % 15);
-    const drawProb = Math.max(5, 100 - homeProb - awayProb);
-    const bestBet = homeProb > awayProb ? 'home' : 'away';
-    const confidence = homeProb >= 55 ? 'high' : homeProb >= 45 ? 'medium' : 'low';
-    const stars = confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3;
-    const probDiff = Math.abs(homeProb - awayProb);
-
-    const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
-    const statusShort = f.status && f.status.short ? f.status.short : 'NS';
-
-    return {
-      id: String(f.id),
-      homeId: t.home.id,
-      awayId: t.away.id,
-      leagueId: l.id,
-      season: l.season,
-      league: l.name,
-      leagueBadge: this.abbr(l.name),
-      home: t.home.name,
-      away: t.away.name,
-      homeLogo: t.home.logo || null,
-      awayLogo: t.away.logo || null,
-      time,
-      status: statusShort,
-      statusLong: (f.status && f.status.long) || '',
-      isLive: liveStatuses.includes(statusShort),
-      elapsed: (f.status && f.status.elapsed) || null,
-      kickoff: f.timestamp ? f.timestamp * 1000 : null,
-      analysis: {
-        home: homeProb, draw: drawProb, away: awayProb,
-        ev: parseFloat((probDiff / 3 + 1).toFixed(1)),
-        kelly: parseFloat(Math.max(0.5, probDiff / 5).toFixed(1)),
-        confidence, stars, bestBet,
-        market: 'clean',
-        weather: { desc: 'N/A', temp: '--' },
-        referee: 'Balanced',
-        fatigue: { home: 'Fresh', away: 'Fresh' },
-        coach: 'Balanced',
-        xg: {
-          home: parseFloat((1.0 + (seed % 15) / 10).toFixed(2)),
-          away: parseFloat((0.8 + ((seed * 2) % 12) / 10).toFixed(2))
-        }
-      }
-    };
-  },
-
-  abbr(name) {
-    const map = {
-      'Premier League': 'PL', 'La Liga': 'LL', 'Serie A': 'SA',
-      'Bundesliga': 'BL', 'Ligue 1': 'L1', 'Eredivisie': 'ED',
-      'Primeira Liga': 'PLP', 'Champions League': 'UCL', 'Europa League': 'UEL'
-    };
-    if (map[name]) return map[name];
-    return name.split(' ').map(w => w[0] || '').join('').substring(0, 3).toUpperCase();
   },
 
   getCache() {
