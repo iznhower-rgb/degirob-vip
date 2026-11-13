@@ -49,12 +49,12 @@ const Detail = {
       <div class="hero-card">
         <div class="hero-teams">
           <div class="hero-team">
-            <div class="hero-team-badge">${homeName.charAt(0)}</div>
+            ${this.renderHeroBadge(homeName, m.homeLogo)}
             <div class="hero-team-name">${homeName}</div>
           </div>
           <div class="hero-vs">VS</div>
           <div class="hero-team">
-            <div class="hero-team-badge">${awayName.charAt(0)}</div>
+            ${this.renderHeroBadge(awayName, m.awayLogo)}
             <div class="hero-team-name">${awayName}</div>
           </div>
         </div>
@@ -166,6 +166,15 @@ const Detail = {
     Navigation.showScreen('detail');
     this.loadH2H(m, m.id);
     this.loadStandings(m, m.id);
+  },
+
+  renderHeroBadge(name, logoUrl) {
+    const letter = Helpers.escapeHtml(name.charAt(0));
+    if (!logoUrl) {
+      return `<div class="hero-team-badge"><span class="hero-team-letter">${letter}</span></div>`;
+    }
+    const safeUrl = Helpers.escapeHtml(logoUrl);
+    return `<div class="hero-team-badge has-logo"><span class="hero-team-letter">${letter}</span><img src="${safeUrl}" class="hero-team-logo" alt="" onerror="this.parentNode.classList.remove('has-logo')"></div>`;
   },
 
   async loadH2H(m, expectedId) {
