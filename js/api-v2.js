@@ -31,7 +31,7 @@ const API = {
             if (seen.has(ev.id)) continue;
             seen.add(ev.id);
 
-            const comp = ev.competitions?.[0];
+            const comp = ev.competitions && ev.competitions[0];
             if (!comp || !comp.competitors) continue;
 
             const home = comp.competitors.find(c => c.homeAway === 'home');
@@ -68,7 +68,7 @@ const API = {
         }
       }
 
-      // ترتيب المباريات
+      // ترتيب المباريات: المباشرة أولاً، ثم القادمة، ثم المنتهية
       allMatches.sort((a, b) => {
         if (a.isLive && !b.isLive) return -1;
         if (!a.isLive && b.isLive) return 1;
@@ -77,10 +77,9 @@ const API = {
         return a.kickoff - b.kickoff;
       });
 
-      // 👇 هذا هو السطر الحاسم الذي كان مفقوداً
+      // تطبيع البيانات (إضافة التوقعات)
       const normalized = allMatches.map(i => this.normalizeMatch(i)).filter(Boolean);
-      
-      console.info(`[API] ✅ Total matches: ${normalized.length}`);
+      console.info(`[API] ✅ Total matches loaded: ${normalized.length}`);
       return normalized;
     } catch (err) {
       console.error('[API] Failed:', err.message);
