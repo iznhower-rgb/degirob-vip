@@ -35,7 +35,27 @@ const Dashboard = {
       return;
     }
 
-    const sorted = [...STATE.matches].sort((a, b) => {
+    let filtered = [...STATE.matches];
+
+    // 1. تطبيق الفلتر
+    if (STATE.allMatchesFilter === 'live') {
+      filtered = filtered.filter(m => m.isLive);
+    } else if (STATE.allMatchesFilter === 'upcoming') {
+      filtered = filtered.filter(m => !m.isLive && !m.isPost);
+    }
+
+    // 2. تطبيق البحث
+    if (STATE.allMatchesSearch) {
+      const query = STATE.allMatchesSearch.toLowerCase();
+      filtered = filtered.filter(m => 
+        m.home.toLowerCase().includes(query) || 
+        m.away.toLowerCase().includes(query) || 
+        m.league.toLowerCase().includes(query)
+      );
+    }
+
+    // 3. الترتيب
+    filtered.sort((a, b) => {
       if (a.isLive && !b.isLive) return -1;
       if (!a.isLive && b.isLive) return 1;
       if (!a.isPost && b.isPost) return -1;
@@ -43,7 +63,12 @@ const Dashboard = {
       return a.kickoff - b.kickoff;
     });
 
-    el.innerHTML = sorted.slice(0, 100).map(m => this.renderCard(m, false)).join('');
+    if (!filtered.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-title">${I18n.t('noSearchResults')}</div></div>`;
+      return;
+    }
+
+    el.innerHTML = filtered.slice(0, 150).map(m => this.renderCard(m, false)).join('');
   },
 
   updateStats() {
@@ -121,9 +146,7 @@ const Dashboard = {
     const html = `
       <div class="empty-state" style="padding:40px 20px">
         <div style="font-size:40px;margin-bottom:16px">⚠️</div>
-        <div class="empty-state-title" style="margin-bottom:10px;font-size:15px">
-          ${friendly[e.code] || e.message}
-        </div>
+        <div class="empty-state-title" style="margin-bottom:10px;font-size:15px">${friendly[e.code] || e.message}</div>
         <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-family:ui-monospace,monospace">${e.code}</div>
         <div style="font-size:10px;color:var(--text-3);margin-bottom:24px;font-family:ui-monospace,monospace;word-break:break-all;max-width:340px;margin:0 auto">${(e.detail || e.message || '').substring(0, 200)}</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
@@ -139,9 +162,7 @@ const Dashboard = {
 
   renderBadge(name, logoUrl) {
     const letter = Helpers.escapeHtml(name.charAt(0));
-    if (!logoUrl) {
-      return `<div class="team-badge"><span class="team-letter">${letter}</span></div>`;
-    }
+    if (!logoUrl) return `<div class="team-badge"><span class="team-letter">${letter}</span></div>`;
     const safeUrl = Helpers.escapeHtml(logoUrl);
     return `<div class="team-badge has-logo"><span class="team-letter">${letter}</span><img src="${safeUrl}" class="team-logo" alt="" onerror="this.parentNode.classList.remove('has-logo')"></div>`;
   },
@@ -151,9 +172,7 @@ const Dashboard = {
       const minute = m.elapsed ? ' ' + m.elapsed + "'" : '';
       return `<span class="live-pulse"><span class="live-dot"></span>LIVE${minute}</span>`;
     }
-    if (m.isPost) {
-      return `<div class="time-tag" style="background:rgba(90,96,114,0.2);color:var(--text-2)">FT</div>`;
-    }
+    if (m.isPost) return `<div class="time-tag" style="background:rgba(90,96,114,0.2);color:var(--text-2)">FT</div>`;
     return `<div class="time-tag">${m.time}</div>`;
   },
 
@@ -161,7 +180,6 @@ const Dashboard = {
     const a = m.analysis;
     const marketClass = a.market === 'clean' ? 'trap-clean' : a.market === 'trap' ? 'trap-trap' : 'trap-caution';
     const marketText = a.market === 'clean' ? 'CLEAN' : a.market === 'trap' ? 'TRAP' : 'CAUTION';
-
     const homeName = Helpers.teamName(m.home);
     const awayName = Helpers.teamName(m.away);
 
