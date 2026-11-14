@@ -56,7 +56,6 @@ const App = {
     I18n.toggle();
     I18n.apply();
     
-    // تحديث الشاشات المفتوحة
     if (STATE.matches.length) Dashboard.render();
 
     const fav = document.getElementById('favorites');
@@ -67,7 +66,6 @@ const App = {
       Detail.open(STATE.currentMatchId);
     }
 
-    // تحديث شاشة كل المباريات عند تغيير اللغة
     const allScreen = document.getElementById('allMatches');
     if (allScreen && allScreen.classList.contains('active')) Dashboard.renderAll();
   },
@@ -90,7 +88,6 @@ const App = {
     STATE.apiStatus = 'loading';
     STATE.matches = [];
     Dashboard.showLoading();
-    Dashboard.renderStatusBadge();
 
     try {
       const matches = await API.fetchMatches();
@@ -115,7 +112,6 @@ const App = {
 
 document.addEventListener('DOMContentLoaded', () => App.init());
 
-/* ===== PWA: تسجيل Service Worker ===== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
