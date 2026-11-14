@@ -53,7 +53,7 @@ const App = {
       logo.addEventListener('touchcancel', () => clearTimeout(timer));
     }
 
-    // 👇 ربط أحداث البحث والفلترة الجديدة
+    // ربط البحث
     const searchInput = document.getElementById('matchSearch');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
@@ -62,6 +62,7 @@ const App = {
       });
     }
 
+    // ربط الفلاتر
     document.querySelectorAll('.filter-chip').forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
@@ -98,8 +99,6 @@ const App = {
       Navigation.showScreen('dashboard');
       I18n.apply();
       this.loadMatches();
-      
-      // 👇 تفعيل التحديث التلقائي كل 60 ثانية
       this.startAutoRefresh();
     } catch (err) {
       console.error('[App] enterApp:', err);
@@ -109,17 +108,16 @@ const App = {
   startAutoRefresh() {
     if (this.autoRefreshInterval) clearInterval(this.autoRefreshInterval);
     this.autoRefreshInterval = setInterval(() => {
-      // التحديث فقط إذا كان التطبيق في المقدمة وهناك مباريات مباشرة
       if (document.visibilityState === 'visible' && STATE.matches.some(m => m.isLive)) {
         console.info('[App] Auto-refreshing live data...');
         this.silentRefresh();
       }
-    }, 60000); // 60 ثانية
+    }, 60000);
   },
 
   async silentRefresh() {
     try {
-      const matches = await API.fetchMatches(true); // true = ignore cache
+      const matches = await API.fetchMatches(true);
       STATE.matches = matches;
       Dashboard.render();
       const allScreen = document.getElementById('allMatches');
