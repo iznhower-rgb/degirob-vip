@@ -4,6 +4,27 @@ const App = {
   init() {
     console.info('[App] Init...');
     try {
+      // 👇 آلية المسح التلقائي: إذا تغير إصدار التطبيق، امسح الكاش القديم
+      const VERSION_TAG_KEY = 'degirob_version_tag';
+      const storedVersion = localStorage.getItem(VERSION_TAG_KEY);
+      
+      if (storedVersion !== CONFIG.VERSION) {
+        console.info('[App] Version changed:', storedVersion || 'none', '→', CONFIG.VERSION);
+        // نحافظ على الترخيص، اللغة، والمفضلة — ونمسح كل شيء آخر
+        const keep = [
+          CONFIG.STORAGE_KEYS.LICENSE,
+          CONFIG.STORAGE_KEYS.LANG,
+          CONFIG.STORAGE_KEYS.FAVORITES
+        ];
+        Object.keys(localStorage).forEach(k => {
+          if (k.startsWith('degirob_') && !keep.includes(k)) {
+            localStorage.removeItem(k);
+            console.info('[App] Cleared:', k);
+          }
+        });
+        localStorage.setItem(VERSION_TAG_KEY, CONFIG.VERSION);
+      }
+
       STATE.lang = Storage.getLang();
       I18n.setLang(STATE.lang);
       STATE.favorites = Storage.getFavorites();
@@ -53,7 +74,6 @@ const App = {
       logo.addEventListener('touchcancel', () => clearTimeout(timer));
     }
 
-    // ربط البحث
     const searchInput = document.getElementById('matchSearch');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
@@ -62,7 +82,6 @@ const App = {
       });
     }
 
-    // ربط الفلاتر
     document.querySelectorAll('.filter-chip').forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
