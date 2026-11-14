@@ -1,8 +1,16 @@
 const Dashboard = {
   render() {
-    if (STATE.apiStatus === 'error' || !STATE.matches.length) {
+    if (STATE.apiStatus === 'loading') return;
+
+    if (STATE.apiStatus === 'error') {
       this.updateStatsEmpty();
       this.showError();
+      return;
+    }
+
+    if (STATE.apiStatus === 'empty' || !STATE.matches.length) {
+      this.updateStatsEmpty();
+      this.showEmpty();
       return;
     }
 
@@ -31,30 +39,27 @@ const Dashboard = {
     if (!el) return;
 
     if (!STATE.matches.length) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-state-title">${I18n.t('noMatches')}</div></div>`;
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-title">${I18n.t('noMatchesToday')}</div></div>`;
       return;
     }
 
     let filtered = [...STATE.matches];
 
-    // 1. تطبيق الفلتر
     if (STATE.allMatchesFilter === 'live') {
       filtered = filtered.filter(m => m.isLive);
     } else if (STATE.allMatchesFilter === 'upcoming') {
       filtered = filtered.filter(m => !m.isLive && !m.isPost);
     }
 
-    // 2. تطبيق البحث
     if (STATE.allMatchesSearch && STATE.allMatchesSearch.trim() !== '') {
       const query = STATE.allMatchesSearch.toLowerCase().trim();
-      filtered = filtered.filter(m => 
-        m.home.toLowerCase().includes(query) || 
-        m.away.toLowerCase().includes(query) || 
+      filtered = filtered.filter(m =>
+        m.home.toLowerCase().includes(query) ||
+        m.away.toLowerCase().includes(query) ||
         m.league.toLowerCase().includes(query)
       );
     }
 
-    // 3. الترتيب
     filtered.sort((a, b) => {
       if (a.isLive && !b.isLive) return -1;
       if (!a.isLive && b.isLive) return 1;
@@ -68,7 +73,6 @@ const Dashboard = {
       return;
     }
 
-    // عرض حتى 150 مباراة
     el.innerHTML = filtered.slice(0, 150).map(m => this.renderCard(m, false)).join('');
   },
 
@@ -132,14 +136,24 @@ const Dashboard = {
     if (m) m.innerHTML = '';
   },
 
+  showEmpty() {
+    const html = `
+      <div class="empty-state" style="padding:60px 20px">
+        <div style="font-size:56px;margin-bottom:20px;opacity:0.35">⚽</div>
+        <div class="empty-state-title" style="font-size:16px;margin-bottom:8px">${I18n.t('noMatchesToday')}</div>
+        <div class="empty-state-sub" style="margin-bottom:28px;color:var(--text-3)">${I18n.t('noMatchesSub')}</div>
+        <button class="retry-btn" onclick="App.loadMatches()">🔄 ${I18n.t('retry')}</button>
+      </div>`;
+    const g = document.getElementById('goldenPicks');
+    const m = document.getElementById('morePicks');
+    if (g) g.innerHTML = html;
+    if (m) m.innerHTML = '';
+  },
+
   showError() {
     const e = STATE.apiError || { code: 'UNKNOWN', message: 'خطأ غير معروف', detail: '' };
     const friendly = {
-      'NO_API_KEY': 'لم يتم إعداد مفتاح API',
-      'KEY_INVALID': 'المفتاح غير صالح',
       'NETWORK_ERROR': 'تعذر الاتصال بالإنترنت',
-      'RATE_LIMIT': 'تجاوزت الحد اليومي',
-      'NO_MATCHES': '0 مباريات اليوم — جرّب لاحقاً',
       'NORMALIZE_FAILED': 'تعذّر تحويل البيانات',
       'API_ERROR': 'خطأ من مزود البيانات',
       'UNKNOWN': 'خطأ غير معروف'
@@ -150,10 +164,7 @@ const Dashboard = {
         <div class="empty-state-title" style="margin-bottom:10px;font-size:15px">${friendly[e.code] || e.message}</div>
         <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-family:ui-monospace,monospace">${e.code}</div>
         <div style="font-size:10px;color:var(--text-3);margin-bottom:24px;font-family:ui-monospace,monospace;word-break:break-all;max-width:340px;margin:0 auto">${(e.detail || e.message || '').substring(0, 200)}</div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <button class="retry-btn" onclick="App.loadMatches()">🔄 إعادة المحاولة</button>
-          <button class="retry-btn" style="background:linear-gradient(135deg,#F43F5E,#DC2626)" onclick="API.clearCache();location.reload()">🗑️ مسح cache</button>
-        </div>
+        <button class="retry-btn" onclick="App.loadMatches()">🔄 ${I18n.t('retry')}</button>
       </div>`;
     const g = document.getElementById('goldenPicks');
     const m = document.getElementById('morePicks');
