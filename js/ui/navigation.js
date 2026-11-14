@@ -11,11 +11,6 @@ const Navigation = {
     const screen = document.getElementById(id);
     if (screen) screen.classList.add('active');
     
-    const badge = document.getElementById('statusBadge');
-    if (badge) {
-      badge.style.display = (id === 'detail') ? 'none' : 'block';
-    }
-
     window.scrollTo(0, 0);
   },
 
