@@ -64,6 +64,9 @@ const TRANSLATIONS_AR = {
   teamCol: 'الفريق',
   pts: 'النقاط',
 
+  noMatchesToday: 'لا توجد مباريات اليوم',
+  noMatchesSub: 'جرّب لاحقاً أو اضغط تحديث',
+
   errorLoading: 'تعذر تحميل البيانات',
   errorRetry: 'تحقق من اتصالك وحاول مجدداً',
   retry: 'إعادة المحاولة'
