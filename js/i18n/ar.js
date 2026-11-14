@@ -1,5 +1,4 @@
 const TRANSLATIONS_AR = {
-  // Paywall
   paywallSub: 'الاستخبارات التكتيكية للنخبة',
   feat1: '8 توقعات ذهبية يومياً',
   feat2: 'تحليل AI + السوق',
@@ -8,7 +7,6 @@ const TRANSLATIONS_AR = {
   unlockBtn: 'فتح الوصول',
   invalidKey: 'مفتاح غير صالح',
 
-  // Dashboard
   greeting: 'أهلاً بك، عضو النخبة',
   greetingSub: 'ملخصك الاستخباراتي اليومي',
   picks: 'توقعات',
@@ -18,23 +16,24 @@ const TRANSLATIONS_AR = {
   morePicks: 'فرص إضافية',
   noMatches: 'لا توجد مباريات متاحة',
 
-  // Nav
   home: 'الرئيسية',
   favorites: 'المفضلة',
   allMatchesNav: 'المباريات',
-
-  // All Matches Screen
   allMatches: 'كل المباريات',
   allMatchesSub: 'جميع مباريات اليوم',
 
-  // Favorites
+  searchPlaceholder: 'ابحث عن فريق أو دوري...',
+  filterAll: 'الكل',
+  filterLive: 'مباشر',
+  filterUpcoming: 'قادم',
+  noSearchResults: 'لا توجد نتائج مطابقة لبحثك',
+
   myFavorites: 'مبارياتي المفضلة',
   myFavoritesSub: 'المباريات التي حفظتها',
   matchesSaved: 'مباريات محفوظة',
   noFavorites: 'لا توجد مباريات مفضلة',
   noFavoritesSub: 'اضغط على النجمة ⭐ في أي تحليل لحفظه هنا',
 
-  // Detail
   matchAnalysis: 'تحليل المباراة',
   probability: 'الاحتمالات',
   homeWin: 'المضيف',
@@ -65,7 +64,6 @@ const TRANSLATIONS_AR = {
   teamCol: 'الفريق',
   pts: 'النقاط',
 
-  // Errors
   errorLoading: 'تعذر تحميل البيانات',
   errorRetry: 'تحقق من اتصالك وحاول مجدداً',
   retry: 'إعادة المحاولة'
