@@ -7,16 +7,18 @@ class APIError extends Error {
 }
 
 const API = {
-  async fetchMatches() {
-    const cache = this.getCache();
-    if (cache) {
-      console.info('[API] ✅ From cache:', cache.length);
-      return cache;
+  async fetchMatches(forceRefresh = false) {
+    if (!forceRefresh) {
+      const cache = this.getCache();
+      if (cache) {
+        console.info('[API] ✅ From cache:', cache.length);
+        return cache;
+      }
     }
 
     try {
       const raw = await this.callESPN();
-      if (!raw.length) throw new APIError('NO_MATCHES', '0 مباريات اليوم في جميع الدوريات');
+      if (!raw.length) throw new APIError('NO_MATCHES', '0 مباريات في الدوريات المتاحة اليوم');
 
       const matches = raw.map(i => this.normalizeMatch(i)).filter(Boolean);
       if (!matches.length) throw new APIError('NORMALIZE_FAILED', 'فشل التحويل');
@@ -26,6 +28,10 @@ const API = {
       return matches;
     } catch (err) {
       console.error('[API] Failed:', err.message);
+      if (forceRefresh) {
+        // في حالة التحديث التلقائي، لا نرمي خطأ يمسح الشاشة، بل نترك البيانات القديمة
+        throw err;
+      }
       throw err;
     }
   },
@@ -53,8 +59,7 @@ const API = {
 
         const json = await res.json();
         const events = json.events || [];
-        console.info(`[API] ${date}: ${events.length} raw events`);
-
+        
         for (const ev of events) {
           if (seen.has(ev.id)) continue;
           seen.add(ev.id);
@@ -77,15 +82,12 @@ const API = {
           const dateObj = new Date(ev.date);
           const time = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-          // استخراج الدوري
           let leagueName = 'Football';
           let leagueSlug = 'all';
           const teamLeague = comp.competitors[0].team?.league;
           if (teamLeague) {
             leagueName = teamLeague.name || 'Football';
             leagueSlug = teamLeague.slug || 'all';
-          } else if (ev.season) {
-            leagueName = ev.season.name || 'Football';
           }
 
           all.push({
@@ -114,7 +116,6 @@ const API = {
       if (all.length >= 20) break;
     }
 
-    // ترتيب: المباشرة أولاً، ثم القادمة، ثم المنتهية
     all.sort((a, b) => {
       if (a.isLive && !b.isLive) return -1;
       if (!a.isLive && b.isLive) return 1;
@@ -208,9 +209,7 @@ const API = {
 
       this._setCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, result, 30);
       return result;
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   },
 
   async _searchTeamId(teamName) {
@@ -247,7 +246,7 @@ const API = {
     if (!leagueId) return null;
 
     const cacheKey = `${leagueSlug}-${CONFIG.API.TSDB_SEASON}`;
-    const cached = this._getCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, CONFIG.API.CACHE_STANDINGS_MINUTES);
+    const cached = this._getCached(CONFIG.API.STORAGE_KEYS ? CONFIG.STORAGE_KEYS.STANDINGS_CACHE : 'std', cacheKey, CONFIG.API.CACHE_STANDINGS_MINUTES);
     if (cached !== null) return cached;
 
     try {
@@ -271,9 +270,7 @@ const API = {
       const result = { standings, season: CONFIG.API.TSDB_SEASON };
       this._setCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, result, 10);
       return result;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   },
 
   _getCached(storageKey, cacheKey, ttlMinutes) {
