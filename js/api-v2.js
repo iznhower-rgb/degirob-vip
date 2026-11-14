@@ -10,20 +10,17 @@ const API = {
   async fetchMatches() {
     console.info('[API] 🚀 Fetching matches (ESPN + RapidAPI + Bzzoiro)...');
     try {
-      // 1. جلب المباريات من المصادر الثلاثة بالتوازي
       const [espnMatches, rapidMatches, bzzoiroMatches] = await Promise.all([
         this.fetchESPNMatches(),
         this.fetchRapidAPIMatches(),
         this.fetchBzzoiroMatches()
       ]);
 
-      console.info(`[API] ESPN: ${espnMatches.length} | RapidAPI: ${rapidMatches.length} | Bzzoiro: ${bzzoiroMatches.length}`);
+      console.info(`[API] 📊 ESPN: ${espnMatches.length} | RapidAPI: ${rapidMatches.length} | Bzzoiro: ${bzzoiroMatches.length}`);
 
-      // 2. دمج المباريات وحذف المكرر (بالاعتماد على بصمة الفريقين)
       const allMatches = [...espnMatches, ...rapidMatches, ...bzzoiroMatches];
       const uniqueMatches = this.deduplicateMatches(allMatches);
 
-      // 3. الترتيب
       uniqueMatches.sort((a, b) => {
         if (a.isLive && !b.isLive) return -1;
         if (!a.isLive && b.isLive) return 1;
@@ -43,7 +40,7 @@ const API = {
     }
   },
 
-  // --- 1. ESPN (الأساس السريع) ---
+  // --- 1. ESPN ---
   async fetchESPNMatches() {
     try {
       const today = this._formatDate(new Date());
@@ -73,10 +70,13 @@ const API = {
           kickoff: dateObj.getTime(), statusShort: ev.status?.type?.shortDetail || (statusState === 'post' ? 'FT' : 'NS')
         };
       }).filter(Boolean);
-    } catch (e) { return []; }
+    } catch (e) {
+      console.warn('[API] ESPN error:', e.message);
+      return [];
+    }
   },
 
-  // --- 2. RapidAPI (تغطية الدوريات الصغيرة، مع كاش 24 ساعة) ---
+  // --- 2. RapidAPI (مع تصحيح الحقول) ---
   async fetchRapidAPIMatches() {
     const today = new Date().toISOString().split('T')[0];
     try {
@@ -92,34 +92,67 @@ const API = {
 
     try {
       const url = `${CONFIG.API.RAPIDAPI_BASE}/football-get-matches-by-date?date=${today}`;
+      console.info(`[API] RapidAPI: Fetching ${url}`);
       const res = await fetch(url, {
         headers: { 'x-rapidapi-key': CONFIG.API.RAPIDAPI_KEY, 'x-rapidapi-host': CONFIG.API.RAPIDAPI_HOST }
       });
-      if (!res.ok) return [];
+      
+      if (!res.ok) {
+        console.warn(`[API] RapidAPI HTTP ${res.status}`);
+        return [];
+      }
+      
       const json = await res.json();
+      console.info('[API] RapidAPI raw keys:', Object.keys(json));
+      
       const matchesData = json.response || json.data || json.matches || [];
+      console.info(`[API] RapidAPI raw array length: ${matchesData.length}`);
+      
+      if (matchesData.length > 0) {
+        console.info('[API] RapidAPI first item keys:', Object.keys(matchesData[0]));
+      }
+
       const rapidMatches = matchesData.map(ev => {
-        const dateObj = new Date(ev.match_date || ev.timestamp * 1000 || Date.now());
+        // استخدام الحقول الصحيحة من توثيق RapidAPI
+        const homeTeam = ev.home_team_name || ev.home_team || ev.home?.name;
+        const awayTeam = ev.away_team_name || ev.away_team || ev.away?.name;
+        if (!homeTeam || !awayTeam) return null;
+
+        const dateStr = ev.match_date || ev.date;
+        const timeStr = ev.match_time || ev.time || '00:00';
+        const dateObj = dateStr ? new Date(`${dateStr}T${timeStr}:00`) : new Date();
+
         return {
-          id: String(ev.match_id || Math.random()), source: 'RapidAPI',
-          leagueSlug: ev.league_id || 'all', league: ev.league_name || 'دوري عالمي',
+          id: `rap-${ev.match_id || ev.id || Math.random()}`, 
+          source: 'RapidAPI',
+          leagueSlug: String(ev.league_id || ev.league?.id || 'all'), 
+          league: ev.league_name || ev.league?.name || 'دوري عالمي',
           leagueBadge: (ev.league_name || 'ALL').substring(0, 3).toUpperCase(),
-          home: ev.home_team || 'Home', away: ev.away_team || 'Away',
-          homeId: ev.home_id || '', awayId: ev.away_id || '',
-          homeLogo: ev.home_logo || null, awayLogo: ev.away_logo || null,
-          time: dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          isLive: ev.status === 'LIVE' || ev.match_status === 'LIVE',
-          isPost: ev.status === 'FINISHED' || ev.match_status === 'FT',
-          elapsed: ev.minute || null, kickoff: dateObj.getTime(), statusShort: ev.status || 'NS'
+          home: homeTeam, away: awayTeam,
+          homeId: String(ev.home_team_id || ev.home?.id || ''), 
+          awayId: String(ev.away_team_id || ev.away?.id || ''),
+          homeLogo: ev.home_team_logo || ev.home?.logo || null, 
+          awayLogo: ev.away_team_logo || ev.away?.logo || null,
+          time: timeStr.substring(0, 5),
+          isLive: (ev.match_status || '').toLowerCase().includes('live') || ev.match_status === '1H' || ev.match_status === '2H',
+          isPost: (ev.match_status || '').toLowerCase().includes('finished') || ev.match_status === 'FT',
+          elapsed: parseInt(ev.match_minute || 0) || null, 
+          kickoff: dateObj.getTime(), 
+          statusShort: ev.match_status || 'NS'
         };
-      }).filter(m => m.home !== 'Home');
+      }).filter(Boolean);
+
+      console.info(`[API] RapidAPI mapped to ${rapidMatches.length} matches`);
 
       localStorage.setItem(CONFIG.STORAGE_KEYS.RAPIDAPI_CACHE, JSON.stringify({ date: today, timestamp: Date.now(), matches: rapidMatches }));
       return rapidMatches;
-    } catch (e) { return []; }
+    } catch (e) {
+      console.warn('[API] RapidAPI failed:', e.message);
+      return [];
+    }
   },
 
-  // --- 3. Bzzoiro (التحليلات والتوقعات الحقيقية) ---
+  // --- 3. Bzzoiro (مع تصحيح المسار) ---
   async fetchBzzoiroMatches() {
     const today = new Date().toISOString().split('T')[0];
     try {
@@ -134,31 +167,63 @@ const API = {
     } catch (e) {}
 
     try {
-      console.info('[API] Bzzoiro: Fetching live matches...');
-      const url = `${CONFIG.API.BZZOIRO_BASE}/events/live/`;
+      // استخدام /events/ مع تاريخ محدد بدلاً من /events/live/
+      const url = `${CONFIG.API.BZZOIRO_BASE}/events/?date_from=${today}&date_to=${today}`;
+      console.info(`[API] Bzzoiro: Fetching ${url}`);
+      
       const res = await fetch(url, {
         headers: { 'Authorization': `Token ${CONFIG.API.BZZOIRO_KEY}` }
       });
-      if (!res.ok) return [];
+      
+      if (!res.ok) {
+        console.warn(`[API] Bzzoiro HTTP ${res.status}`);
+        const text = await res.text();
+        console.warn('[API] Bzzoiro error body:', text.substring(0, 200));
+        return [];
+      }
+      
       const json = await res.json();
-      const events = json.data || json.events || json.results || [];
+      console.info('[API] Bzzoiro raw keys:', Object.keys(json));
+      
+      // Bzzoiro يستخدم Django REST Framework (results array)
+      const events = json.results || json.data || json.events || [];
+      console.info(`[API] Bzzoiro raw array length: ${events.length}`);
+      
+      if (events.length > 0) {
+        console.info('[API] Bzzoiro first item keys:', Object.keys(events[0]));
+      }
 
       const bzzoiroMatches = events.map(ev => {
-        const dateObj = new Date(ev.start_time || ev.date || Date.now());
+        // Bzzoiro يعيد home_team و away_team ككائنات أو نصوص
+        const homeTeam = typeof ev.home_team === 'object' ? ev.home_team?.name : ev.home_team;
+        const awayTeam = typeof ev.away_team === 'object' ? ev.away_team?.name : ev.away_team;
+        if (!homeTeam || !awayTeam) return null;
+
+        const dateObj = new Date(ev.event_date || ev.date || ev.start_time || Date.now());
+        const status = (ev.status || '').toLowerCase();
+        
         return {
-          id: `bzz-${ev.id}`, source: 'Bzzoiro',
-          leagueSlug: ev.league?.id || 'all', league: ev.league?.name || 'دوري عالمي',
+          id: `bzz-${ev.id}`, 
+          source: 'Bzzoiro',
+          leagueSlug: String(ev.league?.id || 'all'), 
+          league: ev.league?.name || 'دوري عالمي',
           leagueBadge: (ev.league?.name || 'ALL').substring(0, 3).toUpperCase(),
-          home: ev.home_team?.name || 'Home', away: ev.away_team?.name || 'Away',
-          homeId: ev.home_team?.id || '', awayId: ev.away_team?.id || '',
-          homeLogo: ev.home_team?.logo || null, awayLogo: ev.away_team?.logo || null,
+          home: homeTeam, away: awayTeam,
+          homeId: String(ev.home_team?.id || ''), 
+          awayId: String(ev.away_team?.id || ''),
+          homeLogo: ev.home_team?.logo || null, 
+          awayLogo: ev.away_team?.logo || null,
           time: dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          isLive: true, isPost: false, elapsed: ev.minute || null,
-          kickoff: dateObj.getTime(), statusShort: 'LIVE',
-          // تخزين توقعات Bzzoiro إن وجدت
-          bzzoiroPrediction: ev.predictions || null
+          isLive: status.includes('live') || status === 'in_play',
+          isPost: status.includes('finished') || status === 'ft',
+          elapsed: ev.minute || null, 
+          kickoff: dateObj.getTime(), 
+          statusShort: ev.status || 'NS',
+          bzzoiroPrediction: ev.prediction || null
         };
-      }).filter(m => m.home !== 'Home');
+      }).filter(Boolean);
+
+      console.info(`[API] Bzzoiro mapped to ${bzzoiroMatches.length} matches`);
 
       localStorage.setItem(CONFIG.STORAGE_KEYS.BZZOIRO_CACHE, JSON.stringify({ date: today, timestamp: Date.now(), matches: bzzoiroMatches }));
       return bzzoiroMatches;
@@ -168,7 +233,6 @@ const API = {
     }
   },
 
-  // --- دمج وحذف المكرر ---
   deduplicateMatches(matches) {
     const seen = new Set();
     const unique = [];
@@ -176,7 +240,6 @@ const API = {
       const fingerprint = `${m.home.toLowerCase().trim()}-${m.away.toLowerCase().trim()}`;
       if (seen.has(fingerprint)) {
         const index = unique.findIndex(u => `${u.home.toLowerCase().trim()}-${u.away.toLowerCase().trim()}` === fingerprint);
-        // نفضل Bzzoiro (لأنها تحتوي على توقعات) ثم ESPN
         if (index > -1 && (m.source === 'Bzzoiro' || (m.source === 'ESPN' && unique[index].source !== 'Bzzoiro'))) {
           unique[index] = m;
         }
@@ -196,7 +259,6 @@ const API = {
   },
 
   normalizeMatch(ev) {
-    // استخدام توقعات Bzzoiro الحقيقية إذا كانت متوفرة
     let homeProb = 40 + ((parseInt(ev.id.replace(/\D/g, '').slice(-3), 10) || 1) % 20);
     let drawProb = 25;
     let awayProb = 100 - homeProb - drawProb;
