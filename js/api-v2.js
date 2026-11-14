@@ -11,7 +11,6 @@ const API = {
     console.info('[API] 🚀 Fetching ALL world matches in one request...');
     try {
       const today = this._formatDate(new Date());
-      // الرابط السحري: all يجلب كل شيء
       const url = `${CONFIG.API.ESPN_BASE}/all/scoreboard?dates=${today}&limit=1000`;
       
       const controller = new AbortController();
@@ -24,13 +23,11 @@ const API = {
       const json = await res.json();
       const events = json.events || [];
       
-      console.info(`[API] ESPN returned ${events.length} raw events`);
-
       if (events.length === 0) return [];
 
       const matches = [];
       for (const ev of events) {
-        const comp = ev.competitions && ev.competitions[0];
+        const comp = ev.competitions?.[0];
         if (!comp || !comp.competitors) continue;
 
         const home = comp.competitors.find(c => c.homeAway === 'home');
@@ -43,13 +40,13 @@ const API = {
         const dateObj = new Date(ev.date);
         const time = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         
-        // استخراج اسم الدوري
-        const leagueName = ev.league?.name || ev.competitions[0]?.notes?.[0]?.headline || 'دوري عالمي';
+        const leagueName = ev.league?.name || 'دوري عالمي';
+        const leagueSlug = ev.league?.slug || 'all';
         const leagueBadge = ev.league?.abbreviation || leagueName.substring(0, 3).toUpperCase();
 
         matches.push({
           id: String(ev.id),
-          leagueSlug: ev.league?.slug || 'all',
+          leagueSlug: leagueSlug,
           league: leagueName,
           leagueBadge: leagueBadge,
           home: home.team.displayName || home.team.name,
@@ -67,7 +64,6 @@ const API = {
         });
       }
 
-      // ترتيب المباريات (المباشرة أولاً)
       matches.sort((a, b) => {
         if (a.isLive && !b.isLive) return -1;
         if (!a.isLive && b.isLive) return 1;
@@ -163,8 +159,23 @@ const API = {
   },
 
   async fetchStandings(leagueSlug) {
-    // بما أن الـ slug قد لا يطابق TheSportsDB، سنعتمد على الترتيب العام أو نتخطاه
-    // هذا الجزء يمكن تطويره لاحقاً، لكنه لن يعطل المباريات.
-    return null; 
+    // ربط دوري ESPN بدوري TSDB
+    const leagueId = CONFIG.API.TSDB_LEAGUES[leagueSlug];
+    if (!leagueId) return null;
+
+    try {
+      const url = `${CONFIG.API.TSDB_BASE}/lookuptable.php?l=${leagueId}&s=${CONFIG.API.TSDB_SEASON}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const table = json.table || [];
+      const standings = table.map(row => ({
+        rank: parseInt(row.intRank, 10), 
+        teamId: row.idTeam, 
+        teamName: row.strTeam,
+        points: parseInt(row.intPoints, 10) || 0
+      }));
+      return { standings, season: CONFIG.API.TSDB_SEASON };
+    } catch (e) { return null; }
   }
 };
