@@ -7,27 +7,20 @@ class APIError extends Error {
 }
 
 const API = {
-  async fetchMatches(forceRefresh = false) {
-    if (!forceRefresh) {
-      const cache = this.getCache();
-      if (cache) {
-        console.info('[API] ✅ From cache:', cache.length);
-        return cache;
-      }
-    }
-
+  async fetchMatches() {
+    console.info('[API] 🚀 Fetching fresh data from network...');
     try {
       const raw = await this.callESPN();
-      if (!raw.length) throw new APIError('NO_MATCHES', '0 مباريات في الدوريات المتاحة اليوم');
+      if (!raw.length) {
+        console.warn('[API] ⚠️ 0 matches found today');
+        return [];
+      }
 
       const matches = raw.map(i => this.normalizeMatch(i)).filter(Boolean);
-      if (!matches.length) throw new APIError('NORMALIZE_FAILED', 'فشل التحويل');
-
       console.info('[API] ✅ TOTAL:', matches.length);
-      this.setCache(matches);
       return matches;
     } catch (err) {
-      console.error('[API] Failed:', err.message);
+      console.error('[API] ❌ Failed:', err.message);
       throw err;
     }
   },
@@ -36,64 +29,23 @@ const API = {
     const all = [];
     const seen = new Set();
     const leagues = CONFIG.API.ESPN_LEAGUES;
-    const batchSize = CONFIG.API.BATCH_SIZE;
-
-    // المرحلة 1: جلب مباريات اليوم من كل الدوريات
     const today = this._formatDate(new Date());
-    console.info(`[API] Fetching ${leagues.length} leagues for ${today}...`);
+    const batchSize = CONFIG.API.BATCH_SIZE;
 
     for (let i = 0; i < leagues.length; i += batchSize) {
       const batch = leagues.slice(i, i + batchSize);
-      const promises = batch.map(l => this._fetchLeagueDate(l, today, seen));
+      const promises = batch.map(l => this._fetchLeague(l, today, seen));
       const results = await Promise.allSettled(promises);
 
       for (const r of results) {
         if (r.status === 'fulfilled' && r.value) all.push(...r.value);
       }
 
-      const batchNum = Math.floor(i / batchSize) + 1;
-      const totalBatches = Math.ceil(leagues.length / batchSize);
-      console.info(`[API] Batch ${batchNum}/${totalBatches}: total ${all.length} matches`);
-
-      if (i + batchSize < leagues.length) await this._sleep(CONFIG.API.BATCH_DELAY_MS);
-    }
-
-    // المرحلة 2: إذا لم نجمع ما يكفي، نجلب مباريات الغد
-    if (all.length < 20) {
-      const tomorrow = this._formatDate(new Date(Date.now() + 86400000));
-      console.info(`[API] Only ${all.length} today — trying ${tomorrow}...`);
-
-      for (let i = 0; i < leagues.length; i += batchSize) {
-        const batch = leagues.slice(i, i + batchSize);
-        const promises = batch.map(l => this._fetchLeagueDate(l, tomorrow, seen));
-        const results = await Promise.allSettled(promises);
-
-        for (const r of results) {
-          if (r.status === 'fulfilled' && r.value) all.push(...r.value);
-        }
-        if (i + batchSize < leagues.length) await this._sleep(CONFIG.API.BATCH_DELAY_MS);
-      }
-      console.info(`[API] After tomorrow: ${all.length} matches`);
-    }
-
-    // المرحلة 3: إذا ما زلنا أقل من 10، نجلب الأمس
-    if (all.length < 10) {
-      const yesterday = this._formatDate(new Date(Date.now() - 86400000));
-      console.info(`[API] Only ${all.length} — trying ${yesterday}...`);
-
-      for (let i = 0; i < leagues.length; i += batchSize) {
-        const batch = leagues.slice(i, i + batchSize);
-        const promises = batch.map(l => this._fetchLeagueDate(l, yesterday, seen));
-        const results = await Promise.allSettled(promises);
-
-        for (const r of results) {
-          if (r.status === 'fulfilled' && r.value) all.push(...r.value);
-        }
-        if (i + batchSize < leagues.length) await this._sleep(CONFIG.API.BATCH_DELAY_MS);
+      if (i + batchSize < leagues.length) {
+        await new Promise(res => setTimeout(res, CONFIG.API.BATCH_DELAY_MS));
       }
     }
 
-    // الترتيب النهائي
     all.sort((a, b) => {
       if (a.isLive && !b.isLive) return -1;
       if (!a.isLive && b.isLive) return 1;
@@ -102,22 +54,20 @@ const API = {
       return a.kickoff - b.kickoff;
     });
 
-    console.info(`[API] ✅ Final count: ${all.length}`);
     return all;
   },
 
-  async _fetchLeagueDate(league, date, seen) {
+  async _fetchLeague(league, date, seen) {
     try {
       const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${date}&limit=200`;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
-      const res = await fetch(url, { signal: controller.signal });
+      
+      // إجبار المتصفح على عدم استخدام الكاش
+      const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
       clearTimeout(t);
 
-      if (!res.ok) {
-        if (res.status !== 404) console.warn(`[API] ${league.slug} ${date}: HTTP ${res.status}`);
-        return [];
-      }
+      if (!res.ok) return [];
 
       const json = await res.json();
       const events = json.events || [];
@@ -166,9 +116,6 @@ const API = {
         });
       }
 
-      if (result.length > 0) {
-        console.info(`[API] ${league.slug} ${date}: ${result.length} matches`);
-      }
       return result;
     } catch (e) {
       return [];
@@ -180,10 +127,6 @@ const API = {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}${m}${day}`;
-  },
-
-  _sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
   },
 
   normalizeMatch(ev) {
@@ -232,51 +175,37 @@ const API = {
   },
 
   async fetchH2H(homeName, awayName) {
-    const cacheKey = `${homeName}-${awayName}`;
-    const cached = this._getCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, CONFIG.API.CACHE_H2H_MINUTES);
-    if (cached !== null) return cached;
-
     try {
       const homeId = await this._searchTeamId(homeName);
       const awayId = await this._searchTeamId(awayName);
-
       const homeMatches = homeId ? await this._fetchTeamLast(homeId) : [];
       const awayMatches = awayId ? await this._fetchTeamLast(awayId) : [];
-
       const combined = [...homeMatches, ...awayMatches];
       combined.sort((a, b) => new Date(b.date) - new Date(a.date));
-      const result = combined.slice(0, 5);
-
-      this._setCached(CONFIG.STORAGE_KEYS.H2H_CACHE, cacheKey, result, 30);
-      return result;
+      return combined.slice(0, 5);
     } catch (e) { return []; }
   },
 
   async _searchTeamId(teamName) {
     try {
       const url = `${CONFIG.API.TSDB_BASE}/searchteams.php?t=${encodeURIComponent(teamName)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) return null;
       const json = await res.json();
-      const teams = json.teams;
-      if (!teams || !teams.length) return null;
-      return teams[0].idTeam;
+      return json.teams && json.teams.length ? json.teams[0].idTeam : null;
     } catch (e) { return null; }
   },
 
   async _fetchTeamLast(teamId) {
     try {
       const url = `${CONFIG.API.TSDB_BASE}/eventslast.php?id=${teamId}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) return [];
       const json = await res.json();
       const results = json.results || [];
       return results.map(r => ({
-        date: r.dateEvent,
-        homeName: r.strHomeTeam,
-        awayName: r.strAwayTeam,
-        homeGoals: parseInt(r.intHomeScore, 10),
-        awayGoals: parseInt(r.intAwayScore, 10)
+        date: r.dateEvent, homeName: r.strHomeTeam, awayName: r.strAwayTeam,
+        homeGoals: parseInt(r.intHomeScore, 10), awayGoals: parseInt(r.intAwayScore, 10)
       }));
     } catch (e) { return []; }
   },
@@ -284,84 +213,17 @@ const API = {
   async fetchStandings(leagueSlug) {
     const leagueId = CONFIG.API.TSDB_LEAGUES[leagueSlug];
     if (!leagueId) return null;
-
-    const cacheKey = `${leagueSlug}-${CONFIG.API.TSDB_SEASON}`;
-    const cached = this._getCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, CONFIG.API.CACHE_STANDINGS_MINUTES);
-    if (cached !== null) return cached;
-
     try {
       const url = `${CONFIG.API.TSDB_BASE}/lookuptable.php?l=${leagueId}&s=${CONFIG.API.TSDB_SEASON}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return null;
       const json = await res.json();
       const table = json.table || [];
-
       const standings = table.map(row => ({
-        rank: parseInt(row.intRank, 10),
-        teamId: row.idTeam,
-        teamName: row.strTeam,
-        points: parseInt(row.intPoints, 10) || 0,
-        played: parseInt(row.intPlayed, 10) || 0,
-        win: parseInt(row.intWin, 10) || 0,
-        draw: parseInt(row.intDraw, 10) || 0,
-        lose: parseInt(row.intLoss, 10) || 0
+        rank: parseInt(row.intRank, 10), teamId: row.idTeam, teamName: row.strTeam,
+        points: parseInt(row.intPoints, 10) || 0
       }));
-
-      const result = { standings, season: CONFIG.API.TSDB_SEASON };
-      this._setCached(CONFIG.STORAGE_KEYS.STANDINGS_CACHE, cacheKey, result, 10);
-      return result;
+      return { standings, season: CONFIG.API.TSDB_SEASON };
     } catch (e) { return null; }
-  },
-
-  _getCached(storageKey, cacheKey, ttlMinutes) {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return null;
-      const data = JSON.parse(raw);
-      const entry = data[cacheKey];
-      if (!entry) return null;
-      if (Date.now() - entry.ts > ttlMinutes * 60000) return null;
-      return entry.value;
-    } catch (e) { return null; }
-  },
-
-  _setCached(storageKey, cacheKey, value, maxEntries) {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      const data = raw ? JSON.parse(raw) : {};
-      data[cacheKey] = { value, ts: Date.now() };
-      const keys = Object.keys(data);
-      if (keys.length > maxEntries) {
-        keys.sort((a, b) => data[b].ts - data[a].ts);
-        for (let i = maxEntries; i < keys.length; i++) delete data[keys[i]];
-      }
-      localStorage.setItem(storageKey, JSON.stringify(data));
-    } catch (e) { }
-  },
-
-  getCache() {
-    try {
-      const raw = localStorage.getItem(CONFIG.STORAGE_KEYS.MATCHES_CACHE);
-      if (!raw) return null;
-      const data = JSON.parse(raw);
-      if (!Array.isArray(data.matches) || !data.matches.length) return null;
-      if ((Date.now() - data.timestamp) / 60000 > CONFIG.API.CACHE_MINUTES) return null;
-      return data.matches;
-    } catch (e) { return null; }
-  },
-
-  setCache(matches) {
-    try {
-      localStorage.setItem(CONFIG.STORAGE_KEYS.MATCHES_CACHE, JSON.stringify({
-        matches, timestamp: Date.now()
-      }));
-    } catch (e) { }
-  },
-
-  clearCache() {
-    localStorage.removeItem(CONFIG.STORAGE_KEYS.MATCHES_CACHE);
-    localStorage.removeItem(CONFIG.STORAGE_KEYS.H2H_CACHE);
-    localStorage.removeItem(CONFIG.STORAGE_KEYS.STANDINGS_CACHE);
-    console.info('[API] All caches cleared');
   }
 };
