@@ -3,7 +3,6 @@ const Dashboard = {
     if (STATE.apiStatus === 'error' || !STATE.matches.length) {
       this.updateStatsEmpty();
       this.showError();
-      this.renderStatusBadge();
       return;
     }
 
@@ -25,7 +24,6 @@ const Dashboard = {
     moreEl.innerHTML = more.map(m => this.renderCard(m, false)).join('');
 
     this.updateStats();
-    this.renderStatusBadge();
   },
 
   renderAll() {
@@ -92,32 +90,6 @@ const Dashboard = {
     const accEl = document.getElementById('statAccuracy');
     accEl.textContent = '0%';
     accEl.style.color = 'var(--neg)';
-  },
-
-  renderStatusBadge() {
-    let badge = document.getElementById('statusBadge');
-    if (!badge) {
-      badge = document.createElement('div');
-      badge.id = 'statusBadge';
-      badge.style.cssText =
-        'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:999;' +
-        'padding:7px 16px;border-radius:20px;font-size:10px;font-weight:900;' +
-        'letter-spacing:1.5px;backdrop-filter:blur(10px);text-transform:uppercase;' +
-        'cursor:pointer;font-family:ui-monospace,monospace;';
-      badge.addEventListener('click', () => { if (window.eruda) eruda.show(); });
-      document.body.appendChild(badge);
-    }
-    const map = {
-      loading: { bg: 'rgba(139,92,246,0.15)', bd: 'rgba(139,92,246,0.5)', cl: '#8B5CF6', tx: '⏳ LOADING' },
-      live:    { bg: 'rgba(16,185,129,0.15)', bd: 'rgba(16,185,129,0.5)', cl: '#10B981', tx: '🟢 LIVE ' + STATE.matches.length },
-      error:   { bg: 'rgba(244,63,94,0.15)',  bd: 'rgba(244,63,94,0.5)',  cl: '#F43F5E', tx: '🔴 ' + (STATE.apiError?.code || 'ERROR') }
-    };
-    const s = map[STATE.apiStatus] || map.loading;
-    badge.style.background = s.bg;
-    badge.style.border = '1px solid ' + s.bd;
-    badge.style.color = s.cl;
-    badge.textContent = s.tx;
-    badge.style.display = 'block';
   },
 
   showLoading() {
