@@ -8,67 +8,31 @@ class APIError extends Error {
 
 const API = {
   async fetchMatches() {
-    console.info('[API] 🚀 Fetching today\'s matches...');
+    console.info('[API] 🚀 Fetching matches (today, tomorrow, yesterday)...');
     try {
-      const today = this._formatDate(new Date());
       const allMatches = [];
       const seen = new Set();
+      const leagues = CONFIG.API.ESPN_LEAGUES;
+      const dates = this._getDateRange();
+      const batchSize = CONFIG.API.BATCH_SIZE;
 
-      for (const league of CONFIG.API.ESPN_LEAGUES) {
-        try {
-          const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${today}&limit=200`;
-          const controller = new AbortController();
-          const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
-          const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-          clearTimeout(t);
+      for (const date of dates) {
+        // إذا جمعنا ما يكفي من المباريات (30+)، لا داعي للبحث في الأمس
+        if (allMatches.length >= 30) break; 
 
-          if (!res.ok) continue;
+        for (let i = 0; i < leagues.length; i += batchSize) {
+          const batch = leagues.slice(i, i + batchSize);
+          const promises = batch.map(l => this._fetchLeague(l, date, seen));
+          const results = await Promise.allSettled(promises);
 
-          const json = await res.json();
-          const events = json.events || [];
-
-          for (const ev of events) {
-            if (seen.has(ev.id)) continue;
-            seen.add(ev.id);
-
-            const comp = ev.competitions && ev.competitions[0];
-            if (!comp || !comp.competitors) continue;
-
-            const home = comp.competitors.find(c => c.homeAway === 'home');
-            const away = comp.competitors.find(c => c.homeAway === 'away');
-            if (!home || !away) continue;
-
-            const statusState = ev.status?.type?.state || 'pre';
-            const isLive = statusState === 'in';
-            const isPost = statusState === 'post';
-            const dateObj = new Date(ev.date);
-            const time = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-            allMatches.push({
-              id: String(ev.id),
-              leagueSlug: league.slug,
-              league: league.name,
-              leagueBadge: league.badge,
-              home: home.team.displayName || home.team.name,
-              away: away.team.displayName || away.team.name,
-              homeId: home.team.id,
-              awayId: away.team.id,
-              homeLogo: home.team.logo || null,
-              awayLogo: away.team.logo || null,
-              time,
-              isLive,
-              isPost,
-              elapsed: isLive ? parseInt(ev.status?.displayClock?.replace("'", '') || 0) : null,
-              kickoff: dateObj.getTime(),
-              statusShort: ev.status?.type?.shortDetail || (isPost ? 'FT' : 'NS')
-            });
+          for (const r of results) {
+            if (r.status === 'fulfilled' && r.value) allMatches.push(...r.value);
           }
-        } catch (e) {
-          console.warn(`[API] Failed to fetch ${league.slug}:`, e.message);
+          await new Promise(res => setTimeout(res, CONFIG.API.BATCH_DELAY_MS));
         }
       }
 
-      // ترتيب المباريات: المباشرة أولاً، ثم القادمة، ثم المنتهية
+      // الترتيب: المباشر أولاً، ثم القادم، ثم المنتهي
       allMatches.sort((a, b) => {
         if (a.isLive && !b.isLive) return -1;
         if (!a.isLive && b.isLive) return 1;
@@ -77,9 +41,8 @@ const API = {
         return a.kickoff - b.kickoff;
       });
 
-      // تطبيع البيانات (إضافة التوقعات)
       const normalized = allMatches.map(i => this.normalizeMatch(i)).filter(Boolean);
-      console.info(`[API] ✅ Total matches loaded: ${normalized.length}`);
+      console.info(`[API] ✅ Total matches: ${normalized.length}`);
       return normalized;
     } catch (err) {
       console.error('[API] Failed:', err.message);
@@ -87,11 +50,75 @@ const API = {
     }
   },
 
-  _formatDate(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}${m}${day}`;
+  async _fetchLeague(league, date, seen) {
+    try {
+      const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${date}&limit=200`;
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+      const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      clearTimeout(t);
+
+      if (!res.ok) return [];
+
+      const json = await res.json();
+      const events = json.events || [];
+      if (!events.length) return [];
+
+      const result = [];
+      for (const ev of events) {
+        if (seen.has(ev.id)) continue;
+        seen.add(ev.id);
+
+        const comp = ev.competitions?.[0];
+        if (!comp || !comp.competitors) continue;
+
+        const home = comp.competitors.find(c => c.homeAway === 'home');
+        const away = comp.competitors.find(c => c.homeAway === 'away');
+        if (!home || !away) continue;
+
+        const statusState = ev.status?.type?.state || 'pre';
+        const isLive = statusState === 'in';
+        const isPost = statusState === 'post';
+        const dateObj = new Date(ev.date);
+        const time = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+        result.push({
+          id: String(ev.id),
+          leagueSlug: league.slug,
+          league: league.name,
+          leagueBadge: league.badge,
+          home: home.team.displayName || home.team.name,
+          away: away.team.displayName || away.team.name,
+          homeId: home.team.id,
+          awayId: away.team.id,
+          homeLogo: home.team.logo || null,
+          awayLogo: away.team.logo || null,
+          time,
+          isLive,
+          isPost,
+          elapsed: isLive ? parseInt(ev.status?.displayClock?.replace("'", '') || 0) : null,
+          kickoff: dateObj.getTime(),
+          statusShort: ev.status?.type?.shortDetail || (isPost ? 'FT' : 'NS')
+        });
+      }
+      return result;
+    } catch (e) {
+      return [];
+    }
+  },
+
+  _getDateRange() {
+    const fmt = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}${m}${day}`;
+    };
+    return [
+      fmt(new Date()),
+      fmt(new Date(Date.now() + 86400000)),
+      fmt(new Date(Date.now() - 86400000))
+    ];
   },
 
   normalizeMatch(ev) {
