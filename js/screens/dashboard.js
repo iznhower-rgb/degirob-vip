@@ -45,8 +45,8 @@ const Dashboard = {
     }
 
     // 2. تطبيق البحث
-    if (STATE.allMatchesSearch) {
-      const query = STATE.allMatchesSearch.toLowerCase();
+    if (STATE.allMatchesSearch && STATE.allMatchesSearch.trim() !== '') {
+      const query = STATE.allMatchesSearch.toLowerCase().trim();
       filtered = filtered.filter(m => 
         m.home.toLowerCase().includes(query) || 
         m.away.toLowerCase().includes(query) || 
@@ -68,6 +68,7 @@ const Dashboard = {
       return;
     }
 
+    // عرض حتى 150 مباراة
     el.innerHTML = filtered.slice(0, 150).map(m => this.renderCard(m, false)).join('');
   },
 
