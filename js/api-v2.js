@@ -8,7 +8,9 @@ class APIError extends Error {
 
 const API = {
   async fetchMatches() {
+    // 👇 هذا السطر يجب أن يظهر في Console لتتأكد أن الكود صحيح
     console.info('[API] 🚀 Fetching matches (today, tomorrow, yesterday)...');
+    
     try {
       const allMatches = [];
       const seen = new Set();
@@ -18,8 +20,12 @@ const API = {
 
       for (const date of dates) {
         // إذا جمعنا ما يكفي من المباريات (30+)، لا داعي للبحث في الأمس
-        if (allMatches.length >= 30) break; 
+        if (allMatches.length >= 30) {
+            console.info(`[API] Reached 30+ matches, stopping date loop.`);
+            break; 
+        }
 
+        console.info(`[API] Searching date: ${date}...`);
         for (let i = 0; i < leagues.length; i += batchSize) {
           const batch = leagues.slice(i, i + batchSize);
           const promises = batch.map(l => this._fetchLeague(l, date, seen));
@@ -42,7 +48,7 @@ const API = {
       });
 
       const normalized = allMatches.map(i => this.normalizeMatch(i)).filter(Boolean);
-      console.info(`[API] ✅ Total matches: ${normalized.length}`);
+      console.info(`[API] ✅ Total matches loaded: ${normalized.length}`);
       return normalized;
     } catch (err) {
       console.error('[API] Failed:', err.message);
