@@ -64,6 +64,9 @@ const TRANSLATIONS_EN = {
   teamCol: 'Team',
   pts: 'Pts',
 
+  noMatchesToday: 'No matches today',
+  noMatchesSub: 'Try again later or tap refresh',
+
   errorLoading: 'Failed to load data',
   errorRetry: 'Check your connection and try again',
   retry: 'Retry'
