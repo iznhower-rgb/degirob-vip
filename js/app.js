@@ -2,27 +2,13 @@ const App = {
   autoRefreshInterval: null,
 
   init() {
-    console.info('[App] Init...');
+    console.info('[App] Init (v5.1.0)...');
     try {
-      // 👇 آلية المسح التلقائي: إذا تغير إصدار التطبيق، امسح الكاش القديم
-      const VERSION_TAG_KEY = 'degirob_version_tag';
-      const storedVersion = localStorage.getItem(VERSION_TAG_KEY);
-      
-      if (storedVersion !== CONFIG.VERSION) {
-        console.info('[App] Version changed:', storedVersion || 'none', '→', CONFIG.VERSION);
-        // نحافظ على الترخيص، اللغة، والمفضلة — ونمسح كل شيء آخر
-        const keep = [
-          CONFIG.STORAGE_KEYS.LICENSE,
-          CONFIG.STORAGE_KEYS.LANG,
-          CONFIG.STORAGE_KEYS.FAVORITES
-        ];
-        Object.keys(localStorage).forEach(k => {
-          if (k.startsWith('degirob_') && !keep.includes(k)) {
-            localStorage.removeItem(k);
-            console.info('[App] Cleared:', k);
-          }
-        });
-        localStorage.setItem(VERSION_TAG_KEY, CONFIG.VERSION);
+      // تنظيف: إزالة أي شارة عالقة من نسخ سابقة
+      const oldBadge = document.getElementById('statusBadge');
+      if (oldBadge) {
+        oldBadge.remove();
+        console.info('[App] Removed leftover statusBadge');
       }
 
       STATE.lang = Storage.getLang();
@@ -95,7 +81,6 @@ const App = {
   toggleLang() {
     I18n.toggle();
     I18n.apply();
-    
     if (STATE.matches.length) Dashboard.render();
 
     const fav = document.getElementById('favorites');
@@ -118,36 +103,13 @@ const App = {
       Navigation.showScreen('dashboard');
       I18n.apply();
       this.loadMatches();
-      this.startAutoRefresh();
     } catch (err) {
       console.error('[App] enterApp:', err);
     }
   },
 
-  startAutoRefresh() {
-    if (this.autoRefreshInterval) clearInterval(this.autoRefreshInterval);
-    this.autoRefreshInterval = setInterval(() => {
-      if (document.visibilityState === 'visible' && STATE.matches.some(m => m.isLive)) {
-        console.info('[App] Auto-refreshing live data...');
-        this.silentRefresh();
-      }
-    }, 60000);
-  },
-
-  async silentRefresh() {
-    try {
-      const matches = await API.fetchMatches(true);
-      STATE.matches = matches;
-      Dashboard.render();
-      const allScreen = document.getElementById('allMatches');
-      if (allScreen && allScreen.classList.contains('active')) Dashboard.renderAll();
-    } catch (err) {
-      console.warn('[App] Silent refresh failed:', err.message);
-    }
-  },
-
   async loadMatches() {
-    console.info('[App] loadMatches...');
+    console.info('[App] loadMatches (fresh)...');
     STATE.apiStatus = 'loading';
     STATE.matches = [];
     Dashboard.showLoading();
@@ -155,10 +117,21 @@ const App = {
     try {
       const matches = await API.fetchMatches();
       STATE.matches = matches;
-      STATE.apiStatus = 'live';
       STATE.apiError = null;
-      console.info('[App] ✅ TOTAL:', matches.length);
+
+      if (matches.length === 0) {
+        STATE.apiStatus = 'empty';
+        console.info('[App] ⚪ No matches today');
+      } else {
+        STATE.apiStatus = 'live';
+        console.info('[App] ✅ TOTAL:', matches.length);
+      }
       Dashboard.render();
+
+      // Auto-refresh فقط إذا توجد مباريات مباشرة
+      if (matches.some(m => m.isLive)) {
+        this.startAutoRefresh();
+      }
     } catch (err) {
       console.error('[App] ❌', err.code, err.message);
       STATE.matches = [];
@@ -169,6 +142,40 @@ const App = {
         detail: err.detail || ''
       };
       Dashboard.render();
+    }
+  },
+
+  startAutoRefresh() {
+    if (this.autoRefreshInterval) clearInterval(this.autoRefreshInterval);
+    this.autoRefreshInterval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+
+      // إذا لم تبقَ مباريات مباشرة، أوقف التحديث تلقائياً
+      if (!STATE.matches.some(m => m.isLive)) {
+        console.info('[App] No more live matches — stopping auto-refresh');
+        clearInterval(this.autoRefreshInterval);
+        this.autoRefreshInterval = null;
+        return;
+      }
+
+      console.info('[App] Auto-refresh (3 min, live matches active)...');
+      this.silentRefresh();
+    }, 180000); // 3 دقائق
+  },
+
+  async silentRefresh() {
+    try {
+      const matches = await API.fetchMatches();
+      if (matches.length > 0) {
+        STATE.matches = matches;
+        STATE.apiStatus = 'live';
+        Dashboard.render();
+        const allScreen = document.getElementById('allMatches');
+        if (allScreen && allScreen.classList.contains('active')) Dashboard.renderAll();
+      }
+      // إذا رجع 0، نبقي البيانات القديمة (لا نمسح الشاشة)
+    } catch (e) {
+      console.warn('[App] Silent refresh failed:', e.message);
     }
   }
 };
