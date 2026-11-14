@@ -37,6 +37,21 @@ const Detail = {
       var(--neg) ${a.home + a.draw}% 100%
     )`;
 
+    // --- البيانات الحقيقية من Bzzoiro (إن وجدت) ---
+    const prediction = m.bzzoiroPrediction || {};
+    const weather = prediction.weather || 'N/A';
+    const pitch = prediction.pitch_condition || 'N/A';
+    const refereeId = prediction.referee_id || 'N/A';
+    const hasXG = prediction.has_xg ? 'متوفر' : 'غير متوفر';
+    
+    // استخراج توقعات الأهداف (إذا كانت متوفرة)
+    let xgHome = '--', xgAway = '--';
+    if (prediction.xg_home) xgHome = prediction.xg_home.toFixed(2);
+    if (prediction.xg_away) xgAway = prediction.xg_away.toFixed(2);
+    if (xgHome === '--' && xgAway === '--' && m.source === 'Bzzoiro') {
+      xgHome = 'غير متوفر'; xgAway = 'غير متوفر';
+    }
+
     document.getElementById('detailContent').innerHTML = `
       <div class="hero-card">
         <div class="hero-teams">
@@ -116,35 +131,28 @@ const Detail = {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
             ${I18n.t('weather')}
           </div>
-          <div class="factor-value">${Helpers.translateWeather(a.weather.desc)} ${a.weather.temp}</div>
+          <div class="factor-value">${weather}</div>
         </div>
         <div class="factor-row">
           <div class="factor-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="6"/><path d="M14 12h8"/><path d="M14 8h5"/><path d="M14 16h5"/></svg>
             ${I18n.t('referee')}
           </div>
-          <div class="factor-value">${Helpers.translateReferee(a.referee)}</div>
+          <div class="factor-value">${refereeId}</div>
         </div>
         <div class="factor-row">
           <div class="factor-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2"/><path d="M4 22s.5-2 1-3a5 5 0 0 1 5-3h1l3 4"/><path d="m6 12 3-2 4 1 1-3 4-1"/><path d="m13 14 5-3 2 3"/></svg>
             ${I18n.t('fatigue')}
           </div>
-          <div class="factor-value">${Helpers.translateFatigue(a.fatigue.home)} / ${Helpers.translateFatigue(a.fatigue.away)}</div>
-        </div>
-        <div class="factor-row">
-          <div class="factor-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
-            ${I18n.t('coach')}
-          </div>
-          <div class="factor-value">${Helpers.translateCoach(a.coach)}</div>
+          <div class="factor-value">${pitch}</div>
         </div>
         <div class="factor-row">
           <div class="factor-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="10"/></svg>
-            ${I18n.t('xg')}
+            xG
           </div>
-          <div class="factor-value">${a.xg.home} - ${a.xg.away}</div>
+          <div class="factor-value">${xgHome} - ${xgAway} (${hasXG})</div>
         </div>
       </div>
 
