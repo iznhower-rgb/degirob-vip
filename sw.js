@@ -1,5 +1,5 @@
-/* Service Worker — DeGirob VIP */
-const CACHE_VERSION = 'v30';
+/* Service Worker — DeGirob VIP (Network-First) */
+const CACHE_VERSION = 'v31';
 const CACHE_NAME = `degirob-${CACHE_VERSION}`;
 
 const PRECACHE = [
@@ -48,43 +48,28 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// ✅ Network-First لكل شيء: يجلب من الإنترنت أولاً، ويستخدم الكاش فقط عند فشل الشبكة
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
-
-  const url = new URL(req.url);
-
-  if (url.origin !== self.location.origin) {
-    event.respondWith(networkFirst(req));
-    return;
-  }
-
-  event.respondWith(cacheFirst(req));
+  event.respondWith(networkFirst(req));
 });
 
-async function cacheFirst(req) {
-  const cached = await caches.match(req, { ignoreSearch: true });
-  if (cached) return cached;
-
+async function networkFirst(req) {
   try {
-    const res = await fetch(req);
-    if (res && res.ok) {
+    const res = await fetch(req, { cache: 'no-store' });
+    if (res && res.ok && req.url.startsWith(self.location.origin)) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(req, res.clone());
     }
     return res;
   } catch (err) {
-    const fallback = await caches.match('./index.html');
-    return fallback || Response.error();
-  }
-}
-
-async function networkFirst(req) {
-  try {
-    return await fetch(req);
-  } catch (err) {
     const cached = await caches.match(req);
     if (cached) return cached;
+    if (req.mode === 'navigate') {
+      const fallback = await caches.match('./index.html');
+      if (fallback) return fallback;
+    }
     return Response.error();
   }
 }
