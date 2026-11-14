@@ -1,4 +1,6 @@
 const App = {
+  autoRefreshInterval: null,
+
   init() {
     console.info('[App] Init...');
     try {
@@ -50,6 +52,24 @@ const App = {
       logo.addEventListener('touchend', () => clearTimeout(timer));
       logo.addEventListener('touchcancel', () => clearTimeout(timer));
     }
+
+    // 👇 ربط أحداث البحث والفلترة الجديدة
+    const searchInput = document.getElementById('matchSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        STATE.allMatchesSearch = e.target.value;
+        Dashboard.renderAll();
+      });
+    }
+
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        STATE.allMatchesFilter = e.target.dataset.filter;
+        Dashboard.renderAll();
+      });
+    });
   },
 
   toggleLang() {
@@ -78,8 +98,34 @@ const App = {
       Navigation.showScreen('dashboard');
       I18n.apply();
       this.loadMatches();
+      
+      // 👇 تفعيل التحديث التلقائي كل 60 ثانية
+      this.startAutoRefresh();
     } catch (err) {
       console.error('[App] enterApp:', err);
+    }
+  },
+
+  startAutoRefresh() {
+    if (this.autoRefreshInterval) clearInterval(this.autoRefreshInterval);
+    this.autoRefreshInterval = setInterval(() => {
+      // التحديث فقط إذا كان التطبيق في المقدمة وهناك مباريات مباشرة
+      if (document.visibilityState === 'visible' && STATE.matches.some(m => m.isLive)) {
+        console.info('[App] Auto-refreshing live data...');
+        this.silentRefresh();
+      }
+    }, 60000); // 60 ثانية
+  },
+
+  async silentRefresh() {
+    try {
+      const matches = await API.fetchMatches(true); // true = ignore cache
+      STATE.matches = matches;
+      Dashboard.render();
+      const allScreen = document.getElementById('allMatches');
+      if (allScreen && allScreen.classList.contains('active')) Dashboard.renderAll();
+    } catch (err) {
+      console.warn('[App] Silent refresh failed:', err.message);
     }
   },
 
