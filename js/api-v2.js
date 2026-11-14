@@ -8,74 +8,29 @@ class APIError extends Error {
 
 const API = {
   async fetchMatches() {
-    // 👇 هذا السطر يجب أن يظهر في Console لتتأكد أن الكود صحيح
-    console.info('[API] 🚀 Fetching matches (today, tomorrow, yesterday)...');
-    
+    console.info('[API] 🚀 Fetching ALL world matches in one request...');
     try {
-      const allMatches = [];
-      const seen = new Set();
-      const leagues = CONFIG.API.ESPN_LEAGUES;
-      const dates = this._getDateRange();
-      const batchSize = CONFIG.API.BATCH_SIZE;
-
-      for (const date of dates) {
-        // إذا جمعنا ما يكفي من المباريات (30+)، لا داعي للبحث في الأمس
-        if (allMatches.length >= 30) {
-            console.info(`[API] Reached 30+ matches, stopping date loop.`);
-            break; 
-        }
-
-        console.info(`[API] Searching date: ${date}...`);
-        for (let i = 0; i < leagues.length; i += batchSize) {
-          const batch = leagues.slice(i, i + batchSize);
-          const promises = batch.map(l => this._fetchLeague(l, date, seen));
-          const results = await Promise.allSettled(promises);
-
-          for (const r of results) {
-            if (r.status === 'fulfilled' && r.value) allMatches.push(...r.value);
-          }
-          await new Promise(res => setTimeout(res, CONFIG.API.BATCH_DELAY_MS));
-        }
-      }
-
-      // الترتيب: المباشر أولاً، ثم القادم، ثم المنتهي
-      allMatches.sort((a, b) => {
-        if (a.isLive && !b.isLive) return -1;
-        if (!a.isLive && b.isLive) return 1;
-        if (!a.isPost && b.isPost) return -1;
-        if (a.isPost && !b.isPost) return 1;
-        return a.kickoff - b.kickoff;
-      });
-
-      const normalized = allMatches.map(i => this.normalizeMatch(i)).filter(Boolean);
-      console.info(`[API] ✅ Total matches loaded: ${normalized.length}`);
-      return normalized;
-    } catch (err) {
-      console.error('[API] Failed:', err.message);
-      throw new APIError('NETWORK_ERROR', err.message);
-    }
-  },
-
-  async _fetchLeague(league, date, seen) {
-    try {
-      const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${date}&limit=200`;
+      const today = this._formatDate(new Date());
+      // الرابط السحري: all يجلب كل شيء
+      const url = `${CONFIG.API.ESPN_BASE}/all/scoreboard?dates=${today}&limit=1000`;
+      
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
       const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
       clearTimeout(t);
 
-      if (!res.ok) return [];
+      if (!res.ok) throw new APIError('NETWORK_ERROR', `HTTP ${res.status}`);
 
       const json = await res.json();
       const events = json.events || [];
-      if (!events.length) return [];
+      
+      console.info(`[API] ESPN returned ${events.length} raw events`);
 
-      const result = [];
+      if (events.length === 0) return [];
+
+      const matches = [];
       for (const ev of events) {
-        if (seen.has(ev.id)) continue;
-        seen.add(ev.id);
-
-        const comp = ev.competitions?.[0];
+        const comp = ev.competitions && ev.competitions[0];
         if (!comp || !comp.competitors) continue;
 
         const home = comp.competitors.find(c => c.homeAway === 'home');
@@ -87,12 +42,16 @@ const API = {
         const isPost = statusState === 'post';
         const dateObj = new Date(ev.date);
         const time = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        
+        // استخراج اسم الدوري
+        const leagueName = ev.league?.name || ev.competitions[0]?.notes?.[0]?.headline || 'دوري عالمي';
+        const leagueBadge = ev.league?.abbreviation || leagueName.substring(0, 3).toUpperCase();
 
-        result.push({
+        matches.push({
           id: String(ev.id),
-          leagueSlug: league.slug,
-          league: league.name,
-          leagueBadge: league.badge,
+          leagueSlug: ev.league?.slug || 'all',
+          league: leagueName,
+          leagueBadge: leagueBadge,
           home: home.team.displayName || home.team.name,
           away: away.team.displayName || away.team.name,
           homeId: home.team.id,
@@ -107,24 +66,30 @@ const API = {
           statusShort: ev.status?.type?.shortDetail || (isPost ? 'FT' : 'NS')
         });
       }
-      return result;
-    } catch (e) {
-      return [];
+
+      // ترتيب المباريات (المباشرة أولاً)
+      matches.sort((a, b) => {
+        if (a.isLive && !b.isLive) return -1;
+        if (!a.isLive && b.isLive) return 1;
+        if (!a.isPost && b.isPost) return -1;
+        if (a.isPost && !b.isPost) return 1;
+        return a.kickoff - b.kickoff;
+      });
+
+      const normalized = matches.map(i => this.normalizeMatch(i)).filter(Boolean);
+      console.info(`[API] ✅ Total matches loaded: ${normalized.length}`);
+      return normalized;
+    } catch (err) {
+      console.error('[API] Failed:', err.message);
+      throw new APIError('NETWORK_ERROR', err.message);
     }
   },
 
-  _getDateRange() {
-    const fmt = (d) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}${m}${day}`;
-    };
-    return [
-      fmt(new Date()),
-      fmt(new Date(Date.now() + 86400000)),
-      fmt(new Date(Date.now() - 86400000))
-    ];
+  _formatDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}${m}${day}`;
   },
 
   normalizeMatch(ev) {
@@ -198,19 +163,8 @@ const API = {
   },
 
   async fetchStandings(leagueSlug) {
-    const leagueId = CONFIG.API.TSDB_LEAGUES[leagueSlug];
-    if (!leagueId) return null;
-    try {
-      const url = `${CONFIG.API.TSDB_BASE}/lookuptable.php?l=${leagueId}&s=${CONFIG.API.TSDB_SEASON}`;
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) return null;
-      const json = await res.json();
-      const table = json.table || [];
-      const standings = table.map(row => ({
-        rank: parseInt(row.intRank, 10), teamId: row.idTeam, teamName: row.strTeam,
-        points: parseInt(row.intPoints, 10) || 0
-      }));
-      return { standings, season: CONFIG.API.TSDB_SEASON };
-    } catch (e) { return null; }
+    // بما أن الـ slug قد لا يطابق TheSportsDB، سنعتمد على الترتيب العام أو نتخطاه
+    // هذا الجزء يمكن تطويره لاحقاً، لكنه لن يعطل المباريات.
+    return null; 
   }
 };
