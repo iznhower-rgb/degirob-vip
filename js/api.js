@@ -35,31 +35,65 @@ const API = {
   async callESPN() {
     const all = [];
     const seen = new Set();
-    const dates = this._getDateRange();
+    const leagues = CONFIG.API.ESPN_LEAGUES;
+    const batchSize = CONFIG.API.BATCH_SIZE;
 
-    for (const date of dates) {
-      console.info(`[API] Fetching ${date} from ${CONFIG.API.ESPN_LEAGUES.length} leagues...`);
-      
-      const promises = CONFIG.API.ESPN_LEAGUES.map(league => 
-        this._fetchLeagueDate(league, date, seen)
-      );
-      
+    // المرحلة 1: جلب مباريات اليوم من كل الدوريات
+    const today = this._formatDate(new Date());
+    console.info(`[API] Fetching ${leagues.length} leagues for ${today}...`);
+
+    for (let i = 0; i < leagues.length; i += batchSize) {
+      const batch = leagues.slice(i, i + batchSize);
+      const promises = batch.map(l => this._fetchLeagueDate(l, today, seen));
       const results = await Promise.allSettled(promises);
-      let dateCount = 0;
-      
-      for (const res of results) {
-        if (res.status === 'fulfilled' && res.value) {
-          all.push(...res.value);
-          dateCount += res.value.length;
-        }
+
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) all.push(...r.value);
       }
-      console.info(`[API] Date ${date}: ${dateCount} matches (total: ${all.length})`);
-      
-      // إذا جمعنا ما يكفي من المباريات، لا داعي لجلب الأمس
-      if (all.length >= 50) break;
+
+      const batchNum = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(leagues.length / batchSize);
+      console.info(`[API] Batch ${batchNum}/${totalBatches}: total ${all.length} matches`);
+
+      if (i + batchSize < leagues.length) await this._sleep(CONFIG.API.BATCH_DELAY_MS);
     }
 
-    // ترتيب: المباشرة أولاً، ثم القادمة، ثم المنتهية
+    // المرحلة 2: إذا لم نجمع ما يكفي، نجلب مباريات الغد
+    if (all.length < 20) {
+      const tomorrow = this._formatDate(new Date(Date.now() + 86400000));
+      console.info(`[API] Only ${all.length} today — trying ${tomorrow}...`);
+
+      for (let i = 0; i < leagues.length; i += batchSize) {
+        const batch = leagues.slice(i, i + batchSize);
+        const promises = batch.map(l => this._fetchLeagueDate(l, tomorrow, seen));
+        const results = await Promise.allSettled(promises);
+
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value) all.push(...r.value);
+        }
+        if (i + batchSize < leagues.length) await this._sleep(CONFIG.API.BATCH_DELAY_MS);
+      }
+      console.info(`[API] After tomorrow: ${all.length} matches`);
+    }
+
+    // المرحلة 3: إذا ما زلنا أقل من 10، نجلب الأمس
+    if (all.length < 10) {
+      const yesterday = this._formatDate(new Date(Date.now() - 86400000));
+      console.info(`[API] Only ${all.length} — trying ${yesterday}...`);
+
+      for (let i = 0; i < leagues.length; i += batchSize) {
+        const batch = leagues.slice(i, i + batchSize);
+        const promises = batch.map(l => this._fetchLeagueDate(l, yesterday, seen));
+        const results = await Promise.allSettled(promises);
+
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value) all.push(...r.value);
+        }
+        if (i + batchSize < leagues.length) await this._sleep(CONFIG.API.BATCH_DELAY_MS);
+      }
+    }
+
+    // الترتيب النهائي
     all.sort((a, b) => {
       if (a.isLive && !b.isLive) return -1;
       if (!a.isLive && b.isLive) return 1;
@@ -68,18 +102,23 @@ const API = {
       return a.kickoff - b.kickoff;
     });
 
+    console.info(`[API] ✅ Final count: ${all.length}`);
     return all;
   },
 
   async _fetchLeagueDate(league, date, seen) {
     try {
-      const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${date}&limit=50`;
+      const url = `${CONFIG.API.ESPN_BASE}/${league.slug}/scoreboard?dates=${date}&limit=200`;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(t);
 
-      if (!res.ok) return [];
+      if (!res.ok) {
+        if (res.status !== 404) console.warn(`[API] ${league.slug} ${date}: HTTP ${res.status}`);
+        return [];
+      }
+
       const json = await res.json();
       const events = json.events || [];
       if (!events.length) return [];
@@ -126,24 +165,25 @@ const API = {
           statusShort: ev.status?.type?.shortDetail || (isPost ? 'FT' : 'NS')
         });
       }
+
+      if (result.length > 0) {
+        console.info(`[API] ${league.slug} ${date}: ${result.length} matches`);
+      }
       return result;
     } catch (e) {
       return [];
     }
   },
 
-  _getDateRange() {
-    const fmt = (d) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}${m}${day}`;
-    };
-    return [
-      fmt(new Date()),
-      fmt(new Date(Date.now() + 86400000)),
-      fmt(new Date(Date.now() - 86400000))
-    ];
+  _formatDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}${m}${day}`;
+  },
+
+  _sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   },
 
   normalizeMatch(ev) {
