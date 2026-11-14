@@ -70,96 +70,106 @@ const API = {
           kickoff: dateObj.getTime(), statusShort: ev.status?.type?.shortDetail || (statusState === 'post' ? 'FT' : 'NS')
         };
       }).filter(Boolean);
-    } catch (e) {
-      console.warn('[API] ESPN error:', e.message);
-      return [];
-    }
+    } catch (e) { return []; }
   },
 
-  // --- 2. RapidAPI (مع تصحيح الحقول) ---
+  // --- 2. RapidAPI (مع تشخيص شامل) ---
   async fetchRapidAPIMatches() {
     const today = new Date().toISOString().split('T')[0];
     try {
       const cached = localStorage.getItem(CONFIG.STORAGE_KEYS.RAPIDAPI_CACHE);
       if (cached) {
         const data = JSON.parse(cached);
-        if (data.date === today && (Date.now() - data.timestamp) / 3600000 < 24) {
+        if (data.date === today && (Date.now() - data.timestamp) / 3600000 < 24 && data.matches.length > 0) {
           console.info('[API] RapidAPI: From cache');
           return data.matches;
         }
       }
     } catch (e) {}
 
-    try {
-      const url = `${CONFIG.API.RAPIDAPI_BASE}/football-get-matches-by-date?date=${today}`;
-      console.info(`[API] RapidAPI: Fetching ${url}`);
-      const res = await fetch(url, {
-        headers: { 'x-rapidapi-key': CONFIG.API.RAPIDAPI_KEY, 'x-rapidapi-host': CONFIG.API.RAPIDAPI_HOST }
-      });
-      
-      if (!res.ok) {
-        console.warn(`[API] RapidAPI HTTP ${res.status}`);
-        return [];
+    // تجربة نقاط نهاية متعددة
+    const endpoints = [
+      `/football-get-matches-by-date?date=${today}`,
+      `/v1/matches?date=${today}`,
+      `/v1/matches-live`,
+      `/v1/matches-upcoming`
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const url = `${CONFIG.API.RAPIDAPI_BASE}${endpoint}`;
+        console.info(`[API] RapidAPI trying: ${endpoint}`);
+        const res = await fetch(url, {
+          headers: { 'x-rapidapi-key': CONFIG.API.RAPIDAPI_KEY, 'x-rapidapi-host': CONFIG.API.RAPIDAPI_HOST }
+        });
+
+        if (!res.ok) {
+          console.warn(`[API] RapidAPI ${endpoint}: HTTP ${res.status}`);
+          continue;
+        }
+
+        const json = await res.json();
+        console.info(`[API] RapidAPI ${endpoint} raw keys:`, Object.keys(json));
+
+        const matchesData = json.response || json.data || json.matches || json.results || [];
+        console.info(`[API] RapidAPI ${endpoint} array length: ${matchesData.length}`);
+
+        if (matchesData.length > 0) {
+          console.info(`[API] RapidAPI ${endpoint} first item keys:`, Object.keys(matchesData[0]));
+          console.info(`[API] RapidAPI ${endpoint} first item sample:`, JSON.stringify(matchesData[0]).substring(0, 300));
+          
+          const rapidMatches = matchesData.map(ev => {
+            const homeTeam = ev.home_team_name || ev.home_team || ev.home?.name || ev.homeTeam;
+            const awayTeam = ev.away_team_name || ev.away_team || ev.away?.name || ev.awayTeam;
+            if (!homeTeam || !awayTeam) return null;
+
+            const dateStr = ev.match_date || ev.date || ev.utcDate;
+            const timeStr = ev.match_time || ev.time || '00:00';
+            const dateObj = dateStr ? new Date(`${dateStr}T${timeStr}:00`) : new Date();
+
+            return {
+              id: `rap-${ev.match_id || ev.id || Math.random()}`,
+              source: 'RapidAPI',
+              leagueSlug: String(ev.league_id || ev.league?.id || ev.competition?.id || 'all'),
+              league: ev.league_name || ev.league?.name || ev.competition?.name || 'دوري عالمي',
+              leagueBadge: (ev.league_name || 'ALL').substring(0, 3).toUpperCase(),
+              home: homeTeam, away: awayTeam,
+              homeId: String(ev.home_team_id || ev.home?.id || ''),
+              awayId: String(ev.away_team_id || ev.away?.id || ''),
+              homeLogo: ev.home_team_logo || ev.home?.logo || null,
+              awayLogo: ev.away_team_logo || ev.away?.logo || null,
+              time: timeStr.substring(0, 5),
+              isLive: (ev.match_status || ev.status || '').toLowerCase().includes('live') || ev.status === 'IN_PLAY',
+              isPost: (ev.match_status || ev.status || '').toLowerCase().includes('finished') || ev.status === 'FINISHED',
+              elapsed: parseInt(ev.match_minute || ev.minute || 0) || null,
+              kickoff: dateObj.getTime(),
+              statusShort: ev.match_status || ev.status || 'NS'
+            };
+          }).filter(Boolean);
+
+          if (rapidMatches.length > 0) {
+            console.info(`[API] ✅ RapidAPI ${endpoint} success: ${rapidMatches.length} matches`);
+            localStorage.setItem(CONFIG.STORAGE_KEYS.RAPIDAPI_CACHE, JSON.stringify({ date: today, timestamp: Date.now(), matches: rapidMatches }));
+            return rapidMatches;
+          }
+        }
+      } catch (e) {
+        console.warn(`[API] RapidAPI ${endpoint} failed:`, e.message);
       }
-      
-      const json = await res.json();
-      console.info('[API] RapidAPI raw keys:', Object.keys(json));
-      
-      const matchesData = json.response || json.data || json.matches || [];
-      console.info(`[API] RapidAPI raw array length: ${matchesData.length}`);
-      
-      if (matchesData.length > 0) {
-        console.info('[API] RapidAPI first item keys:', Object.keys(matchesData[0]));
-      }
-
-      const rapidMatches = matchesData.map(ev => {
-        // استخدام الحقول الصحيحة من توثيق RapidAPI
-        const homeTeam = ev.home_team_name || ev.home_team || ev.home?.name;
-        const awayTeam = ev.away_team_name || ev.away_team || ev.away?.name;
-        if (!homeTeam || !awayTeam) return null;
-
-        const dateStr = ev.match_date || ev.date;
-        const timeStr = ev.match_time || ev.time || '00:00';
-        const dateObj = dateStr ? new Date(`${dateStr}T${timeStr}:00`) : new Date();
-
-        return {
-          id: `rap-${ev.match_id || ev.id || Math.random()}`, 
-          source: 'RapidAPI',
-          leagueSlug: String(ev.league_id || ev.league?.id || 'all'), 
-          league: ev.league_name || ev.league?.name || 'دوري عالمي',
-          leagueBadge: (ev.league_name || 'ALL').substring(0, 3).toUpperCase(),
-          home: homeTeam, away: awayTeam,
-          homeId: String(ev.home_team_id || ev.home?.id || ''), 
-          awayId: String(ev.away_team_id || ev.away?.id || ''),
-          homeLogo: ev.home_team_logo || ev.home?.logo || null, 
-          awayLogo: ev.away_team_logo || ev.away?.logo || null,
-          time: timeStr.substring(0, 5),
-          isLive: (ev.match_status || '').toLowerCase().includes('live') || ev.match_status === '1H' || ev.match_status === '2H',
-          isPost: (ev.match_status || '').toLowerCase().includes('finished') || ev.match_status === 'FT',
-          elapsed: parseInt(ev.match_minute || 0) || null, 
-          kickoff: dateObj.getTime(), 
-          statusShort: ev.match_status || 'NS'
-        };
-      }).filter(Boolean);
-
-      console.info(`[API] RapidAPI mapped to ${rapidMatches.length} matches`);
-
-      localStorage.setItem(CONFIG.STORAGE_KEYS.RAPIDAPI_CACHE, JSON.stringify({ date: today, timestamp: Date.now(), matches: rapidMatches }));
-      return rapidMatches;
-    } catch (e) {
-      console.warn('[API] RapidAPI failed:', e.message);
-      return [];
     }
+
+    console.warn('[API] RapidAPI: All endpoints failed or returned 0');
+    return [];
   },
 
-  // --- 3. Bzzoiro (مع تصحيح المسار) ---
+  // --- 3. Bzzoiro (مصحح حسب التوثيق الرسمي) ---
   async fetchBzzoiroMatches() {
     const today = new Date().toISOString().split('T')[0];
     try {
       const cached = localStorage.getItem(CONFIG.STORAGE_KEYS.BZZOIRO_CACHE);
       if (cached) {
         const data = JSON.parse(cached);
-        if (data.date === today && (Date.now() - data.timestamp) / 3600000 < 6) {
+        if (data.date === today && (Date.now() - data.timestamp) / 3600000 < 6 && data.matches.length > 0) {
           console.info('[API] Bzzoiro: From cache');
           return data.matches;
         }
@@ -167,57 +177,55 @@ const API = {
     } catch (e) {}
 
     try {
-      // استخدام /events/ مع تاريخ محدد بدلاً من /events/live/
-      const url = `${CONFIG.API.BZZOIRO_BASE}/events/?date_from=${today}&date_to=${today}`;
+      const url = `${CONFIG.API.BZZOIRO_BASE}/events/?date_from=${today}&date_to=${today}&limit=200`;
       console.info(`[API] Bzzoiro: Fetching ${url}`);
-      
+
       const res = await fetch(url, {
         headers: { 'Authorization': `Token ${CONFIG.API.BZZOIRO_KEY}` }
       });
-      
+
       if (!res.ok) {
         console.warn(`[API] Bzzoiro HTTP ${res.status}`);
         const text = await res.text();
-        console.warn('[API] Bzzoiro error body:', text.substring(0, 200));
+        console.warn('[API] Bzzoiro error body:', text.substring(0, 300));
         return [];
       }
-      
+
       const json = await res.json();
       console.info('[API] Bzzoiro raw keys:', Object.keys(json));
-      
-      // Bzzoiro يستخدم Django REST Framework (results array)
+
       const events = json.results || json.data || json.events || [];
       console.info(`[API] Bzzoiro raw array length: ${events.length}`);
-      
+
       if (events.length > 0) {
         console.info('[API] Bzzoiro first item keys:', Object.keys(events[0]));
+        console.info('[API] Bzzoiro first item sample:', JSON.stringify(events[0]).substring(0, 300));
       }
 
       const bzzoiroMatches = events.map(ev => {
-        // Bzzoiro يعيد home_team و away_team ككائنات أو نصوص
-        const homeTeam = typeof ev.home_team === 'object' ? ev.home_team?.name : ev.home_team;
-        const awayTeam = typeof ev.away_team === 'object' ? ev.away_team?.name : ev.away_team;
+        // حسب التوثيق: home_team و away_team نصوص، event_date هو التاريخ، league_id رقمي
+        const homeTeam = ev.home_team;
+        const awayTeam = ev.away_team;
         if (!homeTeam || !awayTeam) return null;
 
-        const dateObj = new Date(ev.event_date || ev.date || ev.start_time || Date.now());
+        const dateObj = new Date(ev.event_date);
         const status = (ev.status || '').toLowerCase();
-        
+
         return {
-          id: `bzz-${ev.id}`, 
+          id: `bzz-${ev.id}`,
           source: 'Bzzoiro',
-          leagueSlug: String(ev.league?.id || 'all'), 
-          league: ev.league?.name || 'دوري عالمي',
-          leagueBadge: (ev.league?.name || 'ALL').substring(0, 3).toUpperCase(),
+          leagueSlug: String(ev.league_id || 'all'),
+          league: `League ${ev.league_id || '?'}`, // مؤقتاً حتى نجلب أسماء الدوريات
+          leagueBadge: `BZ${ev.league_id || '?'}`,
           home: homeTeam, away: awayTeam,
-          homeId: String(ev.home_team?.id || ''), 
-          awayId: String(ev.away_team?.id || ''),
-          homeLogo: ev.home_team?.logo || null, 
-          awayLogo: ev.away_team?.logo || null,
+          homeId: String(ev.home_team_id || ''),
+          awayId: String(ev.away_team_id || ''),
+          homeLogo: null, awayLogo: null, // Bzzoiro لا يوفر الشعارات في هذه النقطة
           time: dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-          isLive: status.includes('live') || status === 'in_play',
-          isPost: status.includes('finished') || status === 'ft',
-          elapsed: ev.minute || null, 
-          kickoff: dateObj.getTime(), 
+          isLive: status === 'live',
+          isPost: status === 'finished',
+          elapsed: ev.current_minute || null,
+          kickoff: dateObj.getTime(),
           statusShort: ev.status || 'NS',
           bzzoiroPrediction: ev.prediction || null
         };
@@ -225,7 +233,9 @@ const API = {
 
       console.info(`[API] Bzzoiro mapped to ${bzzoiroMatches.length} matches`);
 
-      localStorage.setItem(CONFIG.STORAGE_KEYS.BZZOIRO_CACHE, JSON.stringify({ date: today, timestamp: Date.now(), matches: bzzoiroMatches }));
+      if (bzzoiroMatches.length > 0) {
+        localStorage.setItem(CONFIG.STORAGE_KEYS.BZZOIRO_CACHE, JSON.stringify({ date: today, timestamp: Date.now(), matches: bzzoiroMatches }));
+      }
       return bzzoiroMatches;
     } catch (e) {
       console.warn('[API] Bzzoiro failed:', e.message);
