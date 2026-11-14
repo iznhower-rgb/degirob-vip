@@ -1,6 +1,6 @@
 const App = {
   init() {
-    console.info('[App] Init (v5.2.0-clean)...');
+    console.info('[App] Init (v7.0.0)...');
     try {
       STATE.lang = Storage.getLang();
       I18n.setLang(STATE.lang);
@@ -94,7 +94,6 @@ const App = {
     Dashboard.showLoading();
 
     try {
-      // استدعاء مباشر ونظيف بدون أي كاش
       const matches = await API.fetchMatches();
       STATE.matches = matches;
       STATE.apiError = null;
@@ -110,7 +109,4 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
