@@ -13,9 +13,9 @@
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
-  <link rel="stylesheet" href="css/main.css?v=26">
-  <link rel="stylesheet" href="css/dashboard.css?v=26">
-  <link rel="stylesheet" href="css/detail.css?v=26">
+  <link rel="stylesheet" href="css/main.css?v=27">
+  <link rel="stylesheet" href="css/dashboard.css?v=27">
+  <link rel="stylesheet" href="css/detail.css?v=27">
 </head>
 <body>
 
@@ -109,6 +109,17 @@
     <main>
       <h1 class="greeting" data-i18n="allMatches">All Matches</h1>
       <p class="greeting-sub" data-i18n="allMatchesSub">All matches today</p>
+      
+      <!-- شريط البحث والفلترة الجديد -->
+      <div class="search-filter-bar">
+        <input type="text" id="matchSearch" class="search-input" placeholder="ابحث..." data-i18n-placeholder="searchPlaceholder">
+        <div class="filter-chips">
+          <button class="filter-chip active" data-filter="all" data-i18n="filterAll">الكل</button>
+          <button class="filter-chip" data-filter="live" data-i18n="filterLive">مباشر</button>
+          <button class="filter-chip" data-filter="upcoming" data-i18n="filterUpcoming">قادم</button>
+        </div>
+      </div>
+
       <div id="allMatchesList"></div>
     </main>
   </div>
@@ -161,21 +172,21 @@
     </div>
   </nav>
 
-  <script src="js/config.js?v=26"></script>
-  <script src="js/state.js?v=26"></script>
-  <script src="js/storage.js?v=26"></script>
-  <script src="js/i18n/ar.js?v=26"></script>
-  <script src="js/i18n/en.js?v=26"></script>
-  <script src="js/i18n.js?v=26"></script>
-  <script src="js/data/teams-ar.js?v=26"></script>
-  <script src="js/api.js?v=26"></script>
-  <script src="js/engine.js?v=26"></script>
-  <script src="js/ui/helpers.js?v=26"></script>
-  <script src="js/ui/navigation.js?v=26"></script>
-  <script src="js/screens/paywall.js?v=26"></script>
-  <script src="js/screens/dashboard.js?v=26"></script>
-  <script src="js/screens/detail.js?v=26"></script>
-  <script src="js/screens/favorites.js?v=26"></script>
-  <script src="js/app.js?v=26"></script>
+  <script src="js/config.js?v=27"></script>
+  <script src="js/state.js?v=27"></script>
+  <script src="js/storage.js?v=27"></script>
+  <script src="js/i18n/ar.js?v=27"></script>
+  <script src="js/i18n/en.js?v=27"></script>
+  <script src="js/i18n.js?v=27"></script>
+  <script src="js/data/teams-ar.js?v=27"></script>
+  <script src="js/api.js?v=27"></script>
+  <script src="js/engine.js?v=27"></script>
+  <script src="js/ui/helpers.js?v=27"></script>
+  <script src="js/ui/navigation.js?v=27"></script>
+  <script src="js/screens/paywall.js?v=27"></script>
+  <script src="js/screens/dashboard.js?v=27"></script>
+  <script src="js/screens/detail.js?v=27"></script>
+  <script src="js/screens/favorites.js?v=27"></script>
+  <script src="js/app.js?v=27"></script>
 </body>
 </html>
