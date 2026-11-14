@@ -8,6 +8,35 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>DeGirob VIP</title>
+  
+  <!-- 🔧 تنظيف تلقائي لمرة واحدة: إذا الـ SW القديم موجود، امسحه وأعد التحميل -->
+  <script>
+    (function(){
+      var KEY = 'degirob_reset_v34';
+      if (localStorage.getItem(KEY) === 'done') return;
+      console.log('[Boot] Cleanup script running (v34)...');
+      Promise.all([
+        navigator.serviceWorker && navigator.serviceWorker.getRegistrations
+          ? navigator.serviceWorker.getRegistrations().then(function(rs){
+              return Promise.all(rs.map(function(r){ return r.unregister(); }));
+            }).catch(function(){ return null; })
+          : Promise.resolve(null),
+        window.caches
+          ? caches.keys().then(function(ks){
+              return Promise.all(ks.map(function(k){ return caches.delete(k); }));
+            }).catch(function(){ return null; })
+          : Promise.resolve(null)
+      ]).then(function(){
+        localStorage.setItem(KEY, 'done');
+        console.log('[Boot] Cleanup complete, reloading...');
+        location.reload(true);
+      }).catch(function(e){
+        console.warn('[Boot] Cleanup error:', e);
+        localStorage.setItem(KEY, 'done');
+      });
+    })();
+  </script>
+
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,9 +45,9 @@
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
-  <link rel="stylesheet" href="css/main.css?v=33">
-  <link rel="stylesheet" href="css/dashboard.css?v=33">
-  <link rel="stylesheet" href="css/detail.css?v=33">
+  <link rel="stylesheet" href="css/main.css?v=34">
+  <link rel="stylesheet" href="css/dashboard.css?v=34">
+  <link rel="stylesheet" href="css/detail.css?v=34">
 </head>
 <body>
 
@@ -172,21 +201,21 @@
     </div>
   </nav>
 
-  <script src="js/config.js?v=33"></script>
-  <script src="js/state.js?v=33"></script>
-  <script src="js/storage.js?v=33"></script>
-  <script src="js/i18n/ar.js?v=33"></script>
-  <script src="js/i18n/en.js?v=33"></script>
-  <script src="js/i18n.js?v=33"></script>
-  <script src="js/data/teams-ar.js?v=33"></script>
-  <script src="js/api.js?v=33"></script>
-  <script src="js/engine.js?v=33"></script>
-  <script src="js/ui/helpers.js?v=33"></script>
-  <script src="js/ui/navigation.js?v=33"></script>
-  <script src="js/screens/paywall.js?v=33"></script>
-  <script src="js/screens/dashboard.js?v=33"></script>
-  <script src="js/screens/detail.js?v=33"></script>
-  <script src="js/screens/favorites.js?v=33"></script>
-  <script src="js/app.js?v=33"></script>
+  <script src="js/config.js?v=34"></script>
+  <script src="js/state.js?v=34"></script>
+  <script src="js/storage.js?v=34"></script>
+  <script src="js/i18n/ar.js?v=34"></script>
+  <script src="js/i18n/en.js?v=34"></script>
+  <script src="js/i18n.js?v=34"></script>
+  <script src="js/data/teams-ar.js?v=34"></script>
+  <script src="js/api.js?v=34"></script>
+  <script src="js/engine.js?v=34"></script>
+  <script src="js/ui/helpers.js?v=34"></script>
+  <script src="js/ui/navigation.js?v=34"></script>
+  <script src="js/screens/paywall.js?v=34"></script>
+  <script src="js/screens/dashboard.js?v=34"></script>
+  <script src="js/screens/detail.js?v=34"></script>
+  <script src="js/screens/favorites.js?v=34"></script>
+  <script src="js/app.js?v=34"></script>
 </body>
 </html>
