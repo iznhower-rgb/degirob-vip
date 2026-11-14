@@ -17,7 +17,12 @@ const I18n = {
       const key = el.getAttribute('data-i18n');
       el.textContent = this.t(key);
     });
-    // NEW: يدعم كل أزرار اللغة (dashboard + favorites)
+    
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      el.placeholder = this.t(key);
+    });
+
     document.querySelectorAll('.lang-toggle').forEach(btn => {
       btn.innerHTML = `<span>${STATE.lang === 'ar' ? 'EN' : 'AR'}</span>`;
     });
